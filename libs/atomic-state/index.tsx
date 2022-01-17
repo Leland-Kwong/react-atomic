@@ -11,12 +11,14 @@ import type {
   ReactElement
 } from 'react'
 
+type WatcherFn<T> = (oldState: T, newState: T) => void
+
+type Subscription<T> = WatcherFn<T>
+
 interface Db<T> {
   state: Readonly<T>
-  subscriptions: Set<WatcherFn<T>>
+  subscriptions: Set<Subscription<T>>
 }
-
-type WatcherFn<T> = (oldState: T, newState: T) => void
 
 interface DefaultOptions<T> {
   isNewQueryValue: <SelectorValue = T>(
@@ -32,7 +34,7 @@ interface AtomRef<T> {
 }
 
 const makeDb = <T,>(initialState: T): Db<T> => {
-  const subscriptions = new Set<WatcherFn<T>>()
+  const subscriptions: Db<T>['subscriptions'] = new Set()
 
   return {
     state: initialState,
@@ -41,7 +43,10 @@ const makeDb = <T,>(initialState: T): Db<T> => {
 }
 
 function setState<T>(db: Db<T>, newState: T) {
+  const oldState = db.state
+
   db.state = newState
+  db.subscriptions.forEach((fn) => fn(oldState, newState))
 }
 
 function getState<T>(db: Db<T>) {
@@ -105,7 +110,7 @@ export function useQuery<T, SelectorValue = T>(
 ) {
   const { context } = atomRef
   const db = useContext(context)
-  const initialState = atomRef.defaultState
+  const initialState = getState(db)
   const [value, setValue] = useState(selector(initialState))
 
   useEffect(() => {
