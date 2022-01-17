@@ -1,3 +1,8 @@
+// TODO: make a `useLog(atomRef): void` method that
+// subscribes to the database and writes mutations to a log
+// history. This can be used for time travelling and
+// debugging.
+
 import {
   createContext,
   useContext,
@@ -28,6 +33,7 @@ interface DefaultOptions<T> {
 }
 
 interface AtomRef<T> {
+  key: string
   defaultState: T
   context: Context<Db<T>>
   defaultOptions: DefaultOptions<T>
@@ -69,15 +75,21 @@ const atomRefBaseDefaultOptions: Readonly<
 }
 
 export function atom<T>({
+  // TODO: a unique identifier for the atom so we know how
+  // to rehydrate the state. Also useful for logging and debugging
+  // purposes.
+  key,
   defaultState,
   defaultOptions
 }: {
+  key: AtomRef<T>['key']
   defaultState: AtomRef<T>['defaultState']
   defaultOptions?: Partial<AtomRef<T>['defaultOptions']>
 }): Readonly<AtomRef<T>> {
   const db = makeDb(defaultState)
 
   return {
+    key,
     defaultState,
     context: createContext(db),
     defaultOptions: {

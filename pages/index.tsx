@@ -13,12 +13,14 @@ interface Hello {
 }
 
 const helloRef = atom<Hello>({
+  key: 'Hello',
   defaultState: { text: 'Hello world' }
 })
 
 type Count = number
 
 const countRef = atom<Count>({
+  key: 'Count',
   defaultState: 0
 })
 
