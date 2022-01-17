@@ -4,9 +4,9 @@ import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import {
   atom,
-  useQuery,
-  useMutation,
-  useReset,
+  useAtom,
+  useSetAtom,
+  useResetAtom,
   AtomRoot
 } from '../libs/atomic-state'
 
@@ -30,13 +30,13 @@ const tick = (time: TimeElapsed, incrementBy: number) =>
   time + incrementBy
 
 const SubComponent = () => {
-  const count = useQuery(timerRef, (s) => s)
-  const mutate = useMutation(timerRef)
-  const reset = useReset(timerRef)
+  const count = useAtom(timerRef, (s) => s)
+  const update = useSetAtom(timerRef)
+  const reset = useResetAtom(timerRef)
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      mutate(tick, 1)
+      update(tick, 1)
     }, 1000)
 
     return () => clearTimeout(timer)
@@ -49,19 +49,20 @@ const SubComponent = () => {
 const setText = (_: Hello, text: string) => ({ text })
 
 const AtomicStateDemo = () => {
-  const state = useQuery(helloRef, (s) => s)
-  const mutate = useMutation(helloRef)
+  const text = useAtom(helloRef, (s) => s.text)
+  const update = useSetAtom(helloRef)
+  const showSubComponent = text.length > 0
 
   return (
     <div>
       <input
         type="text"
-        value={state.text}
+        value={text}
         onChange={(ev) => {
-          mutate(setText, ev.target.value)
+          update(setText, ev.target.value)
         }}
       />
-      {state.text.length > 0 && <SubComponent />}
+      {showSubComponent && <SubComponent />}
     </div>
   )
 }

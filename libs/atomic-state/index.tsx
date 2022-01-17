@@ -133,7 +133,7 @@ export function AtomRoot({
   )
 }
 
-export function useQuery<T, SelectorValue = T>(
+export function useAtom<T, SelectorValue = T>(
   atomRef: AtomRef<T>,
   selector: (state: T) => SelectorValue,
   isNewQueryValue = atomRef.defaultOptions.isNewQueryValue
@@ -175,7 +175,7 @@ export function useQuery<T, SelectorValue = T>(
   return value
 }
 
-export function useMutation<T, U = T>(atomRef: AtomRef<T>) {
+export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
 
@@ -202,8 +202,8 @@ export function useMutation<T, U = T>(atomRef: AtomRef<T>) {
   )
 }
 
-export function useReset<T>(atomRef: AtomRef<T>) {
-  const mutate = useMutation(atomRef)
+export function useResetAtom<T>(atomRef: AtomRef<T>) {
+  const mutate = useSetAtom(atomRef)
 
   return useMemo(() => {
     const reset = () => atomRef.defaultState
