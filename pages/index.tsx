@@ -40,7 +40,7 @@ const SubComponent = () => {
     }, 1000)
 
     return () => clearTimeout(timer)
-  })
+  }, [update, count])
   useEffect(() => reset, [reset])
 
   return <div>Time Elapsed: {count}s</div>

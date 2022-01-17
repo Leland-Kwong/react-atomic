@@ -21,7 +21,6 @@ interface AtomRef<T> {
 type WatcherFn<T> = (
   oldState: T,
   newState: T,
-  key: AtomRef<T>['key'],
   mutationFn: Function
 ) => void
 
@@ -33,11 +32,14 @@ interface DbState {
 
 interface Db<T> {
   state: Readonly<T>
-  subscriptions: Set<Subscription<T>>
+  subscriptions: Map<
+    AtomRef<T>['key'],
+    Set<Subscription<T>>
+  >
 }
 
 interface DefaultOptions<T> {
-  isNewQueryValue: <SelectorValue = T>(
+  shouldUpdateSelector: <SelectorValue = T>(
     oldValue: SelectorValue,
     newValue: SelectorValue
   ) => boolean
@@ -48,7 +50,7 @@ function defaultTo<T>(defaultValue: T, value: T) {
 }
 
 const makeDb = <T,>(initialState: T): Db<T> => {
-  const subscriptions: Db<T>['subscriptions'] = new Set()
+  const subscriptions: Db<T>['subscriptions'] = new Map()
 
   return {
     state: initialState,
@@ -63,29 +65,44 @@ function setState<T>(
   mutationFn: Function
 ) {
   const oldState = db.state
-
   db.state = newState
-  db.subscriptions.forEach((fn) =>
-    fn(oldState, newState, key, mutationFn)
-  )
+
+  const subs = db.subscriptions.get(key) || new Set()
+  subs.forEach((fn) => fn(oldState, newState, mutationFn))
 }
 
 function getState<T>(db: Db<T>) {
   return db.state
 }
 
-function subscribe<T>(db: Db<T>, fn: WatcherFn<T>) {
-  db.subscriptions.add(fn)
+function subscribe<T>(
+  db: Db<T>,
+  key: AtomRef<T>['key'],
+  fn: WatcherFn<T>
+): () => void {
+  const subs = db.subscriptions.get(key)
+
+  if (!subs) {
+    db.subscriptions.set(key, new Set())
+    return subscribe(db, key, fn)
+  }
+
+  subs.add(fn)
 
   return function unsubscribe() {
-    db.subscriptions.delete(fn)
+    subs.delete(fn)
+
+    const shouldCleanup = subs.size === 0
+    if (shouldCleanup) {
+      db.subscriptions.delete(key)
+    }
   }
 }
 
 const atomRefBaseDefaultOptions: Readonly<
   DefaultOptions<any>
 > = {
-  isNewQueryValue: (oldValue, newValue) =>
+  shouldUpdateSelector: (oldValue, newValue) =>
     oldValue !== newValue
 }
 
@@ -136,7 +153,8 @@ export function AtomRoot({
 export function useAtom<T, SelectorValue = T>(
   atomRef: AtomRef<T>,
   selector: (state: T) => SelectorValue,
-  isNewQueryValue = atomRef.defaultOptions.isNewQueryValue
+  shouldUpdateSelector = atomRef.defaultOptions
+    .shouldUpdateSelector
 ) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
@@ -146,18 +164,14 @@ export function useAtom<T, SelectorValue = T>(
   )
 
   useEffect(() => {
-    return subscribe(rootDb, (_, newState, changeKey) => {
-      if (key !== changeKey) {
-        return
-      }
-
+    return subscribe(rootDb, key, (_, newState) => {
       const stateSlice = defaultTo(
         defaultState,
         newState[key]
       )
       const nextValue = selector(stateSlice)
 
-      if (!isNewQueryValue(value, nextValue)) {
+      if (!shouldUpdateSelector(value, nextValue)) {
         return
       }
 
@@ -167,7 +181,7 @@ export function useAtom<T, SelectorValue = T>(
     rootDb,
     key,
     selector,
-    isNewQueryValue,
+    shouldUpdateSelector,
     value,
     defaultState
   ])
@@ -188,13 +202,14 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
         mutationFn: (oldState: U, payload: Payload) => U,
         payload: Payload
       ) => {
-        const currentState = getState(rootDb)
+        const rootState = getState(rootDb)
+        const stateSlice = defaultTo(
+          defaultState,
+          rootState[key]
+        )
         const nextState = {
-          ...currentState,
-          [key]: mutationFn(
-            defaultTo(defaultState, currentState[key]),
-            payload
-          )
+          ...rootState,
+          [key]: mutationFn(stateSlice, payload)
         }
         setState(rootDb, nextState, key, mutationFn)
       },
