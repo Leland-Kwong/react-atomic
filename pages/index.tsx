@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
@@ -5,7 +6,8 @@ import {
   atom,
   useQuery,
   useMutation,
-  Connect
+  useReset,
+  AtomRoot
 } from '../libs/atomic-state'
 
 interface Hello {
@@ -17,30 +19,31 @@ const helloRef = atom<Hello>({
   defaultState: { text: 'Hello world' }
 })
 
-type Count = number
+type TimeElapsed = number
 
-const countRef = atom<Count>({
-  key: 'Count',
+const timerRef = atom<TimeElapsed>({
+  key: 'TimeElapsed',
   defaultState: 0
 })
 
-const setCount = (_: Count, newCount: number) => newCount
+const tick = (time: TimeElapsed, incrementBy: number) =>
+  time + incrementBy
 
 const SubComponent = () => {
-  const count = useQuery(countRef, (s) => s)
-  const mutate = useMutation(countRef)
+  const count = useQuery(timerRef, (s) => s)
+  const mutate = useMutation(timerRef)
+  const reset = useReset(timerRef)
 
-  return (
-    <div>
-      <input
-        type="number"
-        value={count}
-        onChange={(ev) => {
-          mutate(setCount, Number(ev.target.value))
-        }}
-      />
-    </div>
-  )
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      mutate(tick, 1)
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  })
+  useEffect(() => reset, [reset])
+
+  return <div>Time Elapsed: {count}s</div>
 }
 
 const setText = (_: Hello, text: string) => ({ text })
@@ -58,11 +61,7 @@ const AtomicStateDemo = () => {
           mutate(setText, ev.target.value)
         }}
       />
-      {state.text.length > 0 && (
-        <Connect atoms={[countRef]}>
-          <SubComponent />
-        </Connect>
-      )}
+      {state.text.length > 0 && <SubComponent />}
     </div>
   )
 }
@@ -82,9 +81,9 @@ const Home: NextPage = () => {
       <main>
         <h1>Atomic State</h1>
 
-        <Connect atoms={[helloRef]}>
+        <AtomRoot>
           <AtomicStateDemo />
-        </Connect>
+        </AtomRoot>
       </main>
     </div>
   )

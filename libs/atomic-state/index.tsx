@@ -10,15 +10,26 @@ import {
   useMemo,
   useState
 } from 'react'
-import type {
-  Context,
-  ReactChild,
-  ReactElement
-} from 'react'
+import type { ReactChild } from 'react'
 
-type WatcherFn<T> = (oldState: T, newState: T) => void
+interface AtomRef<T> {
+  key: string
+  defaultState: T
+  defaultOptions: DefaultOptions<T>
+}
+
+type WatcherFn<T> = (
+  oldState: T,
+  newState: T,
+  key: AtomRef<T>['key'],
+  mutationFn: Function
+) => void
 
 type Subscription<T> = WatcherFn<T>
+
+interface DbState {
+  [key: string]: any
+}
 
 interface Db<T> {
   state: Readonly<T>
@@ -32,11 +43,8 @@ interface DefaultOptions<T> {
   ) => boolean
 }
 
-interface AtomRef<T> {
-  key: string
-  defaultState: T
-  context: Context<Db<T>>
-  defaultOptions: DefaultOptions<T>
+function defaultTo<T>(defaultValue: T, value: T) {
+  return value === undefined ? defaultValue : value
 }
 
 const makeDb = <T,>(initialState: T): Db<T> => {
@@ -48,11 +56,18 @@ const makeDb = <T,>(initialState: T): Db<T> => {
   }
 }
 
-function setState<T>(db: Db<T>, newState: T) {
+function setState<T>(
+  db: Db<T>,
+  newState: T,
+  key: AtomRef<T>['key'],
+  mutationFn: Function
+) {
   const oldState = db.state
 
   db.state = newState
-  db.subscriptions.forEach((fn) => fn(oldState, newState))
+  db.subscriptions.forEach((fn) =>
+    fn(oldState, newState, key, mutationFn)
+  )
 }
 
 function getState<T>(db: Db<T>) {
@@ -75,9 +90,6 @@ const atomRefBaseDefaultOptions: Readonly<
 }
 
 export function atom<T>({
-  // TODO: a unique identifier for the atom so we know how
-  // to rehydrate the state. Also useful for logging and debugging
-  // purposes.
   key,
   defaultState,
   defaultOptions
@@ -86,12 +98,9 @@ export function atom<T>({
   defaultState: AtomRef<T>['defaultState']
   defaultOptions?: Partial<AtomRef<T>['defaultOptions']>
 }): Readonly<AtomRef<T>> {
-  const db = makeDb(defaultState)
-
   return {
     key,
     defaultState,
-    context: createContext(db),
     defaultOptions: {
       ...atomRefBaseDefaultOptions,
       ...defaultOptions
@@ -99,22 +108,29 @@ export function atom<T>({
   }
 }
 
-export function Connect({
-  atoms,
+const defaultContextDb = makeDb<DbState>({})
+const RootContext = createContext(defaultContextDb)
+
+export function AtomRoot({
   children
 }: {
-  atoms: AtomRef<any>[]
   children: ReactChild | ReactChild[]
 }) {
-  return atoms.reduce((newChildren, atomRef) => {
-    return (
-      <atomRef.context.Provider
-        value={makeDb(atomRef.defaultState)}
-      >
-        {newChildren}
-      </atomRef.context.Provider>
+  const rootDb = useContext(RootContext)
+  const initialDb = useMemo(() => makeDb<DbState>({}), [])
+  const isNestedAtomRoot = rootDb !== defaultContextDb
+
+  if (isNestedAtomRoot) {
+    throw new Error(
+      'Warning: Application tree may only be wrapped in a single `AtomRoot` component'
     )
-  }, children) as ReactElement
+  }
+
+  return (
+    <RootContext.Provider value={initialDb}>
+      {children}
+    </RootContext.Provider>
+  )
 }
 
 export function useQuery<T, SelectorValue = T>(
@@ -122,14 +138,24 @@ export function useQuery<T, SelectorValue = T>(
   selector: (state: T) => SelectorValue,
   isNewQueryValue = atomRef.defaultOptions.isNewQueryValue
 ) {
-  const { context } = atomRef
-  const db = useContext(context)
-  const initialState = getState(db)
-  const [value, setValue] = useState(selector(initialState))
+  const { key, defaultState } = atomRef
+  const rootDb = useContext(RootContext)
+  const initialStateSlice = getState(rootDb)[key]
+  const [value, setValue] = useState(
+    selector(defaultTo(defaultState, initialStateSlice))
+  )
 
   useEffect(() => {
-    return subscribe(db, (_, newState) => {
-      const nextValue = selector(newState)
+    return subscribe(rootDb, (_, newState, changeKey) => {
+      if (key !== changeKey) {
+        return
+      }
+
+      const stateSlice = defaultTo(
+        defaultState,
+        newState[key]
+      )
+      const nextValue = selector(stateSlice)
 
       if (!isNewQueryValue(value, nextValue)) {
         return
@@ -137,14 +163,21 @@ export function useQuery<T, SelectorValue = T>(
 
       setValue(nextValue)
     })
-  }, [db, selector, isNewQueryValue, value, context])
+  }, [
+    rootDb,
+    key,
+    selector,
+    isNewQueryValue,
+    value,
+    defaultState
+  ])
 
   return value
 }
 
-export function useMutation<T>(atomRef: AtomRef<T>) {
-  const { context } = atomRef
-  const db = useContext(context)
+export function useMutation<T, U = T>(atomRef: AtomRef<T>) {
+  const { key, defaultState } = atomRef
+  const rootDb = useContext(RootContext)
 
   return useMemo(
     () =>
@@ -152,11 +185,29 @@ export function useMutation<T>(atomRef: AtomRef<T>) {
         // TODO: warn if the mutation function is unnamed
         // because if we write it to a log we won't have any
         // context
-        mutationFn: (oldState: T, payload: Payload) => T,
+        mutationFn: (oldState: U, payload: Payload) => U,
         payload: Payload
       ) => {
-        setState(db, mutationFn(getState(db), payload))
+        const currentState = getState(rootDb)
+        const nextState = {
+          ...currentState,
+          [key]: mutationFn(
+            defaultTo(defaultState, currentState[key]),
+            payload
+          )
+        }
+        setState(rootDb, nextState, key, mutationFn)
       },
-    [db]
+    [defaultState, rootDb, key]
   )
+}
+
+export function useReset<T>(atomRef: AtomRef<T>) {
+  const mutate = useMutation(atomRef)
+
+  return useMemo(() => {
+    const reset = () => atomRef.defaultState
+
+    mutate(reset, undefined)
+  }, [mutate, atomRef.defaultState])
 }
