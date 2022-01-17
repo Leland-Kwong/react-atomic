@@ -26,7 +26,7 @@ interface DefaultOptions<T> {
   ) => boolean
 }
 
-interface StateRef<T> {
+interface AtomRef<T> {
   defaultState: T
   context: Context<Db<T>>
   defaultOptions: DefaultOptions<T>
@@ -66,11 +66,11 @@ const stateRefBaseDefaultOptions: DefaultOptions<any> = {
 
 export function atom<T>({
   defaultState,
-  defaultOptions = {}
+  defaultOptions
 }: {
-  defaultState: T
-  defaultOptions?: Partial<DefaultOptions<T>>
-}) {
+  defaultState: AtomRef<T>['defaultState']
+  defaultOptions?: Partial<AtomRef<T>['defaultOptions']>
+}): AtomRef<T> {
   const db = makeDb(defaultState)
 
   return {
@@ -87,7 +87,7 @@ export function Connect({
   atoms,
   children
 }: {
-  atoms: StateRef<any>[]
+  atoms: AtomRef<any>[]
   children: ReactChild | ReactChild[]
 }) {
   return atoms.reduce((newChildren, stateRef) => {
@@ -102,7 +102,7 @@ export function Connect({
 }
 
 export function useQuery<T, SelectorValue = T>(
-  stateRef: StateRef<T>,
+  stateRef: AtomRef<T>,
   selector: (state: T) => SelectorValue,
   isNewQueryValue = stateRef.defaultOptions.isNewQueryValue
 ) {
@@ -126,7 +126,7 @@ export function useQuery<T, SelectorValue = T>(
   return value
 }
 
-export function useMutation<T>(stateRef: StateRef<T>) {
+export function useMutation<T>(stateRef: AtomRef<T>) {
   const { context } = stateRef
   const db = useContext(context)
 
