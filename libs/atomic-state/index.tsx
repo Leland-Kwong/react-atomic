@@ -11,10 +11,9 @@ import type {
   ReactElement
 } from 'react'
 
-interface Db<S> {
-  setState: (nextState: S) => void
-  getState: () => S
-  subscribe: (fn: WatcherFn<S>) => () => void
+interface Db<T> {
+  state: Readonly<T>
+  subscriptions: Set<WatcherFn<T>>
 }
 
 type WatcherFn<T> = (oldState: T, newState: T) => void
@@ -33,29 +32,27 @@ interface AtomRef<T> {
 }
 
 const makeDb = <T,>(initialState: T): Db<T> => {
-  let state = initialState
-
   const subscriptions = new Set<WatcherFn<T>>()
 
   return {
-    setState(nextState) {
-      const oldState = state
-      state = nextState
+    state: initialState,
+    subscriptions
+  }
+}
 
-      subscriptions.forEach((fn) => {
-        fn(oldState, nextState)
-      })
-    },
-    getState() {
-      return state
-    },
-    subscribe(fn) {
-      subscriptions.add(fn)
+function setState<T>(db: Db<T>, newState: T) {
+  db.state = newState
+}
 
-      return function unsubscribe() {
-        subscriptions.delete(fn)
-      }
-    }
+function getState<T>(db: Db<T>) {
+  return db.state
+}
+
+function subscribe<T>(db: Db<T>, fn: WatcherFn<T>) {
+  db.subscriptions.add(fn)
+
+  return function unsubscribe() {
+    db.subscriptions.delete(fn)
   }
 }
 
@@ -108,11 +105,11 @@ export function useQuery<T, SelectorValue = T>(
 ) {
   const { context } = atomRef
   const db = useContext(context)
-  const initialState = db.getState()
+  const initialState = atomRef.defaultState
   const [value, setValue] = useState(selector(initialState))
 
   useEffect(() => {
-    return db.subscribe((_, newState) => {
+    return subscribe(db, (_, newState) => {
       const nextValue = selector(newState)
 
       if (!isNewQueryValue(value, nextValue)) {
@@ -136,7 +133,7 @@ export function useMutation<T>(atomRef: AtomRef<T>) {
         mutationFn: (oldState: T, payload: Payload) => T,
         payload: Payload
       ) => {
-        db.setState(mutationFn(db.getState(), payload))
+        setState(db, mutationFn(getState(db), payload))
       },
     [db]
   )
