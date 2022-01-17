@@ -137,6 +137,9 @@ export function useMutation<T>(atomRef: AtomRef<T>) {
   return useMemo(
     () =>
       <Payload,>(
+        // TODO: warn if the mutation function is unnamed
+        // because if we write it to a log we won't have any
+        // context
         mutationFn: (oldState: T, payload: Payload) => T,
         payload: Payload
       ) => {
