@@ -1,10 +1,14 @@
 import {
-  ReactChild,
   createContext,
   useContext,
   useEffect,
   useMemo,
   useState
+} from 'react'
+import type {
+  Context,
+  ReactChild,
+  ReactElement
 } from 'react'
 
 interface Db<S> {
@@ -13,12 +17,25 @@ interface Db<S> {
   subscribe: (fn: WatcherFn<S>) => () => void
 }
 
-type WatcherFn<S> = (oldState: S, newState: S) => void
+type WatcherFn<T> = (oldState: T, newState: T) => void
 
-const makeDb = <S,>(initialState: S): Db<S> => {
+interface DefaultOptions<T> {
+  isNewQueryValue: <SelectorValue = T>(
+    oldValue: SelectorValue,
+    newValue: SelectorValue
+  ) => boolean
+}
+
+interface StateRef<T> {
+  defaultState: T
+  context: Context<Db<T>>
+  defaultOptions: DefaultOptions<T>
+}
+
+const makeDb = <T,>(initialState: T): Db<T> => {
   let state = initialState
 
-  const subscriptions = new Set<WatcherFn<S>>()
+  const subscriptions = new Set<WatcherFn<T>>()
 
   return {
     setState(nextState) {
@@ -42,57 +59,85 @@ const makeDb = <S,>(initialState: S): Db<S> => {
   }
 }
 
-const defaultIsNewQueryValue = <V,>(oldValue: V, newValue: V) => {
-  return oldValue !== newValue
+const stateRefBaseDefaultOptions: DefaultOptions<any> = {
+  isNewQueryValue: (oldValue, newValue) =>
+    oldValue !== newValue
 }
 
-export function makeAtom<S>(initialState: S) {
-  const AtomContext = createContext(makeDb(initialState))
+export function atom<T>({
+  defaultState,
+  defaultOptions = {}
+}: {
+  defaultState: T
+  defaultOptions?: Partial<DefaultOptions<T>>
+}) {
+  const db = makeDb(defaultState)
 
   return {
-    Provider: ({ children }: { children: ReactChild | ReactChild[] }) => {
-      const db = useMemo(() => makeDb(initialState), [initialState])
-      const resetStateOnUnmount = () => {
-        return () => {
-          db.setState(initialState)
-        }
-      }
-
-      useEffect(resetStateOnUnmount, [db])
-
-      return <AtomContext.Provider value={db}>{children}</AtomContext.Provider>
-    },
-    useQuery<Selection = S>(
-      selector: (state: S) => Selection,
-      isNewQueryValue = defaultIsNewQueryValue
-    ) {
-      const context = useContext(AtomContext)
-      const initialState = context.getState()
-      const [value, setValue] = useState(selector(initialState))
-
-      useEffect(() => {
-        return context.subscribe((_, newState) => {
-          const nextValue = selector(newState)
-
-          if (!isNewQueryValue(value, nextValue)) {
-            return
-          }
-
-          setValue(nextValue)
-        })
-      }, [isNewQueryValue, value, context])
-
-      return value
-    },
-    useMutation: () => {
-      const context = useContext(AtomContext)
-
-      return <Payload,>(
-        mutationFn: (oldState: S, payload: Payload) => S,
-        payload: Payload
-      ) => {
-        context.setState(mutationFn(context.getState(), payload))
-      }
+    defaultState,
+    context: createContext(db),
+    defaultOptions: {
+      ...stateRefBaseDefaultOptions,
+      ...defaultOptions
     }
   }
+}
+
+export function Connect({
+  atoms,
+  children
+}: {
+  atoms: StateRef<any>[]
+  children: ReactChild | ReactChild[]
+}) {
+  return atoms.reduce((newChildren, stateRef) => {
+    return (
+      <stateRef.context.Provider
+        value={makeDb(stateRef.defaultState)}
+      >
+        {newChildren}
+      </stateRef.context.Provider>
+    )
+  }, children) as ReactElement
+}
+
+export function useQuery<T, SelectorValue = T>(
+  stateRef: StateRef<T>,
+  selector: (state: T) => SelectorValue,
+  isNewQueryValue = stateRef.defaultOptions.isNewQueryValue
+) {
+  const { context } = stateRef
+  const db = useContext(context)
+  const initialState = db.getState()
+  const [value, setValue] = useState(selector(initialState))
+
+  useEffect(() => {
+    return db.subscribe((_, newState) => {
+      const nextValue = selector(newState)
+
+      if (!isNewQueryValue(value, nextValue)) {
+        return
+      }
+
+      setValue(nextValue)
+    })
+  }, [db, selector, isNewQueryValue, value, context])
+
+  return value
+}
+
+export function useMutation<T>(stateRef: StateRef<T>) {
+  const { context } = stateRef
+  const db = useContext(context)
+
+  return useMemo(
+    () =>
+      <Payload,>(
+        mutationFn: (oldState: T, payload: Payload) => T,
+        payload: Payload
+      ) => {
+        db.setState(mutationFn(db.getState(), payload))
+      },
+    [db]
+  )
 }
