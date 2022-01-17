@@ -61,7 +61,9 @@ function subscribe<T>(db: Db<T>, fn: WatcherFn<T>) {
   }
 }
 
-const atomRefBaseDefaultOptions: DefaultOptions<any> = {
+const atomRefBaseDefaultOptions: Readonly<
+  DefaultOptions<any>
+> = {
   isNewQueryValue: (oldValue, newValue) =>
     oldValue !== newValue
 }
@@ -72,7 +74,7 @@ export function atom<T>({
 }: {
   defaultState: AtomRef<T>['defaultState']
   defaultOptions?: Partial<AtomRef<T>['defaultOptions']>
-}): AtomRef<T> {
+}): Readonly<AtomRef<T>> {
   const db = makeDb(defaultState)
 
   return {

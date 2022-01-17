@@ -8,21 +8,21 @@ import {
   Connect
 } from '../libs/atomic-state'
 
-interface State {
+interface Hello {
   text: string
 }
 
-type CountRef = number
-
-const helloRef = atom({
+const helloRef = atom<Hello>({
   defaultState: { text: 'Hello world' }
 })
 
-const countRef = atom({
+type Count = number
+
+const countRef = atom<Count>({
   defaultState: 0
 })
 
-const setCount = (_: CountRef, newCount: number) => newCount
+const setCount = (_: Count, newCount: number) => newCount
 
 const SubComponent = () => {
   const count = useQuery(countRef, (s) => s)
@@ -41,7 +41,7 @@ const SubComponent = () => {
   )
 }
 
-const setText = (_: State, text: string) => ({ text })
+const setText = (_: Hello, text: string) => ({ text })
 
 const AtomicStateDemo = () => {
   const state = useQuery(helloRef, (s) => s)
