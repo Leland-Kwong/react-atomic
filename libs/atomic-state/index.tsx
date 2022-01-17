@@ -59,7 +59,7 @@ const makeDb = <T,>(initialState: T): Db<T> => {
   }
 }
 
-const stateRefBaseDefaultOptions: DefaultOptions<any> = {
+const atomRefBaseDefaultOptions: DefaultOptions<any> = {
   isNewQueryValue: (oldValue, newValue) =>
     oldValue !== newValue
 }
@@ -77,7 +77,7 @@ export function atom<T>({
     defaultState,
     context: createContext(db),
     defaultOptions: {
-      ...stateRefBaseDefaultOptions,
+      ...atomRefBaseDefaultOptions,
       ...defaultOptions
     }
   }
@@ -90,23 +90,23 @@ export function Connect({
   atoms: AtomRef<any>[]
   children: ReactChild | ReactChild[]
 }) {
-  return atoms.reduce((newChildren, stateRef) => {
+  return atoms.reduce((newChildren, atomRef) => {
     return (
-      <stateRef.context.Provider
-        value={makeDb(stateRef.defaultState)}
+      <atomRef.context.Provider
+        value={makeDb(atomRef.defaultState)}
       >
         {newChildren}
-      </stateRef.context.Provider>
+      </atomRef.context.Provider>
     )
   }, children) as ReactElement
 }
 
 export function useQuery<T, SelectorValue = T>(
-  stateRef: AtomRef<T>,
+  atomRef: AtomRef<T>,
   selector: (state: T) => SelectorValue,
-  isNewQueryValue = stateRef.defaultOptions.isNewQueryValue
+  isNewQueryValue = atomRef.defaultOptions.isNewQueryValue
 ) {
-  const { context } = stateRef
+  const { context } = atomRef
   const db = useContext(context)
   const initialState = db.getState()
   const [value, setValue] = useState(selector(initialState))
@@ -126,8 +126,8 @@ export function useQuery<T, SelectorValue = T>(
   return value
 }
 
-export function useMutation<T>(stateRef: AtomRef<T>) {
-  const { context } = stateRef
+export function useMutation<T>(atomRef: AtomRef<T>) {
+  const { context } = atomRef
   const db = useContext(context)
 
   return useMemo(
