@@ -1,7 +1,57 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import Image from 'next/image'
 import styles from '../styles/Home.module.css'
+import { makeAtom } from '../libs/atomic-state'
+
+interface State {
+  text: string
+}
+
+const atom = makeAtom<State>({ text: 'Hello World' })
+const atom2 = makeAtom<State>({ text: 'atom 2' })
+
+const CharCount = () => {
+  const text = atom2.useQuery((s) => s.text)
+
+  return <div>{text.length}</div>
+}
+
+const SubComponent = () => {
+  const state = atom2.useQuery((s) => s)
+  const mutate = atom2.useMutation()
+  const setText = (_: State, text: string) => ({ text })
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={state.text}
+        onChange={(ev) => {
+          mutate(setText, ev.target.value)
+        }}
+      />
+    </div>
+  )
+}
+
+const AtomicStateDemo = () => {
+  const state = atom.useQuery((s) => s)
+  const mutate = atom.useMutation()
+  const setText = (_: State, text: string) => ({ text })
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={state.text}
+        onChange={(ev) => {
+          mutate(setText, ev.target.value)
+        }}
+      />
+      {state.text.length > 0 && <SubComponent />}
+    </div>
+  )
+}
 
 const Home: NextPage = () => {
   return (
@@ -12,59 +62,16 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+      <main>
+        <h1>Atomic State</h1>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.tsx</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
+        <atom.Provider>
+          <atom2.Provider>
+            <AtomicStateDemo />
+            <CharCount />
+          </atom2.Provider>
+        </atom.Provider>
       </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </a>
-      </footer>
     </div>
   )
 }
