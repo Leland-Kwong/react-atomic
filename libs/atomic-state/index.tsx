@@ -135,6 +135,8 @@ const atomRefBaseDefaultOptions: Readonly<
 const defaultContextDb = makeDb<DbState>({})
 const RootContext = createContext(defaultContextDb)
 
+export type { AtomRef } from './types'
+
 export function atomRef<T>({
   key,
   defaultState,
