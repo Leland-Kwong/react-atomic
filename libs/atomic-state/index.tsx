@@ -1,8 +1,3 @@
-// TODO: make a `useLog(atomRef): void` method that
-// subscribes to the database and writes mutations to a log
-// history. This can be used for time travelling and
-// debugging.
-
 import {
   createContext,
   useContext,
