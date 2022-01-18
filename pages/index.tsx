@@ -6,7 +6,6 @@ import {
   atom,
   useAtom,
   useSetAtom,
-  useResetAtom,
   AtomRoot
 } from '../libs/atomic-state'
 
@@ -32,7 +31,6 @@ const tick = (time: TimeElapsed, incrementBy: number) =>
 const SubComponent = () => {
   const count = useAtom(timerRef, (s) => s)
   const update = useSetAtom(timerRef)
-  /* const reset = useResetAtom(timerRef) */
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -41,7 +39,6 @@ const SubComponent = () => {
 
     return () => clearTimeout(timer)
   }, [update, count])
-  /* useEffect(() => reset, [reset]) */
 
   return <div>Time Elapsed: {count}s</div>
 }
@@ -52,7 +49,7 @@ const AtomicStateDemo = () => {
   const text = useAtom(helloRef, (s) => s.text)
   const update = useSetAtom(helloRef)
   const showSubComponent = text.length > 0
-  /* const count = useAtom(timerRef, (s) => s) */
+  const count = useAtom(timerRef, (s) => s)
 
   return (
     <div>
@@ -64,7 +61,7 @@ const AtomicStateDemo = () => {
         }}
       />
       {showSubComponent && <SubComponent />}
-      {/* <div>Count: {count}</div> */}
+      <div>Count: {count}</div>
     </div>
   )
 }
