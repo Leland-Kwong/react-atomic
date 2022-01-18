@@ -7,7 +7,9 @@ import {
 } from 'react'
 import type { ReactChild } from 'react'
 
+import { $$internal } from './constants'
 import type {
+  $$Internal,
   DefaultAtomOptions,
   AtomRef,
   DbState,
@@ -15,23 +17,17 @@ import type {
   Db
 } from './types'
 
-function noop() {}
-
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
 
-const makeDb = <T,>(
-  initialState: T,
-  onChange: WatcherFn
-): Db<T> => {
+const makeDb = <T,>(initialState: T): Db<T> => {
   const subscriptions: Db<T>['subscriptions'] = new Map()
 
   return {
     state: initialState,
     subscriptions,
-    activeHooks: new Map(),
-    onChange
+    activeHooks: new Map()
   }
 }
 
@@ -44,13 +40,14 @@ function setState<T>(
   const oldState = db.state
   db.state = newState
 
+  const forEachHandler = (fn: WatcherFn) =>
+    fn(oldState, newState, atomRef, mutationFn, db)
   const subs =
     db.subscriptions.get(atomRef.key) || new Set()
-  subs.forEach((fn) =>
-    fn(oldState, newState, atomRef, mutationFn, db)
-  )
-
-  db.onChange(oldState, newState, atomRef, mutationFn, db)
+  const internalSubs =
+    db.subscriptions.get($$internal) || new Set()
+  subs.forEach(forEachHandler)
+  internalSubs.forEach(forEachHandler)
 }
 
 function getState<T>(db: Db<T>) {
@@ -59,7 +56,7 @@ function getState<T>(db: Db<T>) {
 
 function subscribe<T>(
   db: Db<T>,
-  key: AtomRef<T>['key'],
+  key: AtomRef<T>['key'] | $$Internal,
   fn: WatcherFn
 ): void {
   const subs = db.subscriptions.get(key)
@@ -75,7 +72,7 @@ function subscribe<T>(
 
 function unsubscribe<T>(
   db: Db<T>,
-  key: AtomRef<T>['key'],
+  key: AtomRef<T>['key'] | $$Internal,
   fn: WatcherFn
 ) {
   const subs = db.subscriptions.get(key)
@@ -135,10 +132,10 @@ const atomRefBaseDefaultOptions: Readonly<
     oldValue !== newValue
 }
 
-const defaultContextDb = makeDb<DbState>({}, noop)
+const defaultContextDb = makeDb<DbState>({})
 const RootContext = createContext(defaultContextDb)
 
-export function atom<T>({
+export function atomRef<T>({
   key,
   defaultState,
   defaultOptions
@@ -158,17 +155,12 @@ export function atom<T>({
 }
 
 export function AtomRoot({
-  onChange = noop,
   children
 }: {
-  onChange?: WatcherFn
   children: ReactChild | ReactChild[]
 }) {
   const rootDb = useContext(RootContext)
-  const initialDb = useMemo(
-    () => makeDb<DbState>({}, onChange),
-    [onChange]
-  )
+  const initialDb = useMemo(() => makeDb<DbState>({}), [])
   const isNestedAtomRoot = rootDb !== defaultContextDb
 
   if (
@@ -185,6 +177,23 @@ export function AtomRoot({
       {children}
     </RootContext.Provider>
   )
+}
+
+export function AtomObserver({
+  onChange
+}: {
+  onChange: WatcherFn
+}) {
+  const rootDb = useContext(RootContext)
+
+  useEffect(() => {
+    subscribe(rootDb, $$internal, onChange)
+    return () => {
+      unsubscribe(rootDb, $$internal, onChange)
+    }
+  })
+
+  return null
 }
 
 export function useReadAtom<T, SelectorValue = T>(

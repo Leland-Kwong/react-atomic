@@ -1,3 +1,7 @@
+import { $$internal } from './constants'
+
+export type $$Internal = typeof $$internal
+
 export interface DefaultAtomOptions<T> {
   shouldUpdateSelector: <SelectorValue = T>(
     oldValue: SelectorValue,
@@ -27,7 +31,9 @@ type Subscription = WatcherFn
 
 export interface Db<T> {
   state: Readonly<DbState>
-  subscriptions: Map<AtomRef<T>['key'], Set<Subscription>>
+  subscriptions: Map<
+    AtomRef<T>['key'] | $$Internal,
+    Set<Subscription>
+  >
   activeHooks: Map<AtomRef<T>['key'], number>
-  onChange: WatcherFn
 }
