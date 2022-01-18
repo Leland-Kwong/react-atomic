@@ -109,7 +109,7 @@ function unsubscribe<T>(
   }
 }
 
-function resetAtom<T>(_: T, value: T) {
+function resetInactiveAtom<T>(_: T, value: T) {
   return value
 }
 
@@ -135,7 +135,7 @@ function removeActiveHook<T>(
         [atomRef.key]: atomRef.defaultState
       },
       atomRef.key,
-      resetAtom
+      resetInactiveAtom
     )
     db.activeHooks.delete(atomRef.key)
   }
@@ -271,6 +271,10 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
       },
     [defaultState, rootDb, key]
   )
+}
+
+function resetAtom<T>(_: T, defaultState: T) {
+  return defaultState
 }
 
 export function useResetAtom<T>(atomRef: AtomRef<T>) {
