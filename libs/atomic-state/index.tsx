@@ -7,39 +7,13 @@ import {
 } from 'react'
 import type { ReactChild } from 'react'
 
-interface DefaultAtomOptions<T> {
-  shouldUpdateSelector: <SelectorValue = T>(
-    oldValue: SelectorValue,
-    newValue: SelectorValue
-  ) => boolean
-}
-
-interface AtomRef<T> {
-  key: string
-  defaultState: T
-  defaultOptions: DefaultAtomOptions<T>
-}
-
-interface DbState {
-  [key: string]: any
-}
-
-type WatcherFn = (
-  oldState: DbState,
-  newState: DbState,
-  atomRef: AtomRef<any>,
-  mutationFn: Function,
-  db: Db<any>
-) => void
-
-type Subscription = WatcherFn
-
-interface Db<T> {
-  state: Readonly<DbState>
-  subscriptions: Map<AtomRef<T>['key'], Set<Subscription>>
-  activeHooks: Map<AtomRef<T>['key'], number>
-  onChange: WatcherFn
-}
+import type {
+  DefaultAtomOptions,
+  AtomRef,
+  DbState,
+  WatcherFn,
+  Db
+} from './types'
 
 function noop() {}
 
