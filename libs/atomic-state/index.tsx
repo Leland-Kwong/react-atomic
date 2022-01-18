@@ -1,3 +1,6 @@
+// TODO: add ability to pause mutations. This will be useful
+// for debugging purposes.
+
 import dynamic from 'next/dynamic'
 import {
   createContext,
@@ -203,7 +206,7 @@ export function AtomObserver({
     return () => {
       unsubscribe(rootDb, $$internal, onChange)
     }
-  })
+  }, [onChange, rootDb])
 
   return null
 }
@@ -300,8 +303,7 @@ export function AtomDevTools({ logSize = 50 }) {
           newState,
           atomRef,
           mutationFn,
-          mutationPayload,
-          _db
+          mutationPayload
         ) => {
           addLogEntry({
             timestamp: performance.now(),
