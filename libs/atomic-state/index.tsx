@@ -32,7 +32,9 @@ interface DbState {
 type WatcherFn = (
   oldState: DbState,
   newState: DbState,
-  mutationFn: Function
+  atomRef: AtomRef<any>,
+  mutationFn: Function,
+  db: Db<any>
 ) => void
 
 type Subscription = WatcherFn
@@ -41,33 +43,45 @@ interface Db<T> {
   state: Readonly<DbState>
   subscriptions: Map<AtomRef<T>['key'], Set<Subscription>>
   activeHooks: Map<AtomRef<T>['key'], number>
+  onChange: WatcherFn
 }
+
+function noop() {}
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
 
-const makeDb = <T,>(initialState: T): Db<T> => {
+const makeDb = <T,>(
+  initialState: T,
+  onChange: WatcherFn
+): Db<T> => {
   const subscriptions: Db<T>['subscriptions'] = new Map()
 
   return {
     state: initialState,
     subscriptions,
-    activeHooks: new Map()
+    activeHooks: new Map(),
+    onChange
   }
 }
 
 function setState<T>(
   db: Db<T>,
   newState: T,
-  key: AtomRef<T>['key'],
+  atomRef: AtomRef<T>,
   mutationFn: Function
 ) {
   const oldState = db.state
   db.state = newState
 
-  const subs = db.subscriptions.get(key) || new Set()
-  subs.forEach((fn) => fn(oldState, newState, mutationFn))
+  const subs =
+    db.subscriptions.get(atomRef.key) || new Set()
+  subs.forEach((fn) =>
+    fn(oldState, newState, atomRef, mutationFn, db)
+  )
+
+  db.onChange(oldState, newState, atomRef, mutationFn, db)
 }
 
 function getState<T>(db: Db<T>) {
@@ -134,7 +148,7 @@ function removeActiveHook<T>(
         ...getState(db),
         [atomRef.key]: atomRef.defaultState
       },
-      atomRef.key,
+      atomRef,
       resetInactiveAtom
     )
     db.activeHooks.delete(atomRef.key)
@@ -167,20 +181,28 @@ export function atom<T>({
   }
 }
 
-const defaultContextDb = makeDb<DbState>({})
+const defaultContextDb = makeDb<DbState>({}, noop)
 const RootContext = createContext(defaultContextDb)
 
 export function AtomRoot({
+  onChange = noop,
   children
 }: {
+  onChange?: WatcherFn
   children: ReactChild | ReactChild[]
 }) {
   const rootDb = useContext(RootContext)
-  const initialDb = useMemo(() => makeDb<DbState>({}), [])
+  const initialDb = useMemo(
+    () => makeDb<DbState>({}, onChange),
+    [onChange]
+  )
   const isNestedAtomRoot = rootDb !== defaultContextDb
 
-  if (isNestedAtomRoot) {
-    throw new Error(
+  if (
+    process.env.NODE_ENV === 'development' &&
+    isNestedAtomRoot
+  ) {
+    console.error(
       'Warning: Application tree may only be wrapped in a single `AtomRoot` component'
     )
   }
@@ -258,6 +280,16 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
         mutationFn: (oldState: U, payload: Payload) => U,
         payload: Payload
       ) => {
+        if (
+          process.env.NODE_ENV === 'development' &&
+          !mutationFn.name
+        ) {
+          console.error(
+            'Warning: This mutation function should be named -',
+            mutationFn
+          )
+        }
+
         const rootState = getState(rootDb)
         const stateSlice = defaultTo(
           defaultState,
@@ -267,9 +299,9 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
           ...rootState,
           [key]: mutationFn(stateSlice, payload)
         }
-        setState(rootDb, nextState, key, mutationFn)
+        setState(rootDb, nextState, atomRef, mutationFn)
       },
-    [defaultState, rootDb, key]
+    [defaultState, rootDb, key, atomRef]
   )
 }
 
