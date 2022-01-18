@@ -150,12 +150,19 @@ function removeActiveHook<T>(
   }
 }
 
+function resetAtom<T>(_: T, defaultState: T) {
+  return defaultState
+}
+
 const atomRefBaseDefaultOptions: Readonly<
   DefaultAtomOptions<any>
 > = {
   shouldUpdateSelector: (oldValue, newValue) =>
     oldValue !== newValue
 }
+
+const defaultContextDb = makeDb<DbState>({}, noop)
+const RootContext = createContext(defaultContextDb)
 
 export function atom<T>({
   key,
@@ -175,9 +182,6 @@ export function atom<T>({
     }
   }
 }
-
-const defaultContextDb = makeDb<DbState>({}, noop)
-const RootContext = createContext(defaultContextDb)
 
 export function AtomRoot({
   onChange = noop,
@@ -209,7 +213,7 @@ export function AtomRoot({
   )
 }
 
-export function useAtom<T, SelectorValue = T>(
+export function useReadAtom<T, SelectorValue = T>(
   atomRef: AtomRef<T>,
   selector: (state: T) => SelectorValue,
   shouldUpdateSelector = atomRef.defaultOptions
@@ -298,10 +302,6 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
       },
     [defaultState, rootDb, key, atomRef]
   )
-}
-
-function resetAtom<T>(_: T, defaultState: T) {
-  return defaultState
 }
 
 export function useResetAtom<T>(atomRef: AtomRef<T>) {
