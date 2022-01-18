@@ -25,7 +25,7 @@ function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
 
-const makeDb = <T,>(initialState: T): Db<T> => {
+function makeDb<T>(initialState: T): Db<T> {
   const subscriptions: Db<T>['subscriptions'] = new Map()
 
   return {
