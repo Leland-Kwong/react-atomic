@@ -12,37 +12,35 @@ import {
 } from 'react'
 import type { ReactChild } from 'react'
 
+interface DefaultAtomOptions<T> {
+  shouldUpdateSelector: <SelectorValue = T>(
+    oldValue: SelectorValue,
+    newValue: SelectorValue
+  ) => boolean
+}
+
 interface AtomRef<T> {
   key: string
   defaultState: T
-  defaultOptions: DefaultOptions<T>
+  defaultOptions: DefaultAtomOptions<T>
 }
-
-type WatcherFn<T> = (
-  oldState: T,
-  newState: T,
-  mutationFn: Function
-) => void
-
-type Subscription<T> = WatcherFn<T>
 
 interface DbState {
   [key: string]: any
 }
 
-interface Db<T> {
-  state: Readonly<T>
-  subscriptions: Map<
-    AtomRef<T>['key'],
-    Set<Subscription<T>>
-  >
-}
+type WatcherFn = (
+  oldState: DbState,
+  newState: DbState,
+  mutationFn: Function
+) => void
 
-interface DefaultOptions<T> {
-  shouldUpdateSelector: <SelectorValue = T>(
-    oldValue: SelectorValue,
-    newValue: SelectorValue
-  ) => boolean
+type Subscription = WatcherFn
+
+interface Db<T> {
+  state: Readonly<DbState>
+  subscriptions: Map<AtomRef<T>['key'], Set<Subscription>>
+  activeHooks: Map<AtomRef<T>['key'], number>
 }
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -54,7 +52,8 @@ const makeDb = <T,>(initialState: T): Db<T> => {
 
   return {
     state: initialState,
-    subscriptions
+    subscriptions,
+    activeHooks: new Map()
   }
 }
 
@@ -78,29 +77,72 @@ function getState<T>(db: Db<T>) {
 function subscribe<T>(
   db: Db<T>,
   key: AtomRef<T>['key'],
-  fn: WatcherFn<T>
-): () => void {
+  fn: WatcherFn
+): void {
   const subs = db.subscriptions.get(key)
 
   if (!subs) {
     db.subscriptions.set(key, new Set())
-    return subscribe(db, key, fn)
+    subscribe(db, key, fn)
+    return
   }
 
   subs.add(fn)
+}
 
-  return function unsubscribe() {
-    subs.delete(fn)
+function unsubscribe<T>(
+  db: Db<T>,
+  key: AtomRef<T>['key'],
+  fn: WatcherFn
+) {
+  const subs = db.subscriptions.get(key)
 
-    const shouldCleanup = subs.size === 0
-    if (shouldCleanup) {
-      db.subscriptions.delete(key)
-    }
+  if (!subs) {
+    return
+  }
+
+  subs.delete(fn)
+
+  const shouldCleanup = subs.size === 0
+  if (shouldCleanup) {
+    db.subscriptions.delete(key)
+  }
+}
+
+function resetAtom<T>(_: T, value: T) {
+  return value
+}
+
+function addActiveHook<T>(db: Db<T>, atomRef: AtomRef<T>) {
+  const hookCount = db.activeHooks.get(atomRef.key) || 0
+  db.activeHooks.set(atomRef.key, hookCount + 1)
+}
+
+function removeActiveHook<T>(
+  db: Db<T>,
+  atomRef: AtomRef<T>
+) {
+  const hookCount = db.activeHooks.get(atomRef.key) || 0
+  const newHookCount = Math.max(0, hookCount - 1)
+  db.activeHooks.set(atomRef.key, newHookCount)
+
+  const isAtomActive = newHookCount > 0
+  if (!isAtomActive) {
+    setState(
+      db,
+      {
+        ...getState(db),
+        [atomRef.key]: atomRef.defaultState
+      },
+      atomRef.key,
+      resetAtom
+    )
+    db.activeHooks.delete(atomRef.key)
   }
 }
 
 const atomRefBaseDefaultOptions: Readonly<
-  DefaultOptions<any>
+  DefaultAtomOptions<any>
 > = {
   shouldUpdateSelector: (oldValue, newValue) =>
     oldValue !== newValue
@@ -159,39 +201,53 @@ export function useAtom<T, SelectorValue = T>(
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
   const initialStateSlice = getState(rootDb)[key]
-  const [value, setValue] = useState(
+  const [hookState, setHookState] = useState(
     selector(defaultTo(defaultState, initialStateSlice))
   )
 
   useEffect(() => {
-    return subscribe(rootDb, key, (_, newState) => {
-      const stateSlice = defaultTo(
-        defaultState,
-        newState[key]
-      )
+    const watcherFn: WatcherFn = (_, newState) => {
+      const stateSlice = newState[key]
       const nextValue = selector(stateSlice)
 
-      if (!shouldUpdateSelector(value, nextValue)) {
+      if (!shouldUpdateSelector(hookState, nextValue)) {
         return
       }
 
-      setValue(nextValue)
-    })
+      setHookState(nextValue)
+    }
+
+    addActiveHook(rootDb, atomRef)
+    subscribe(rootDb, key, watcherFn)
+
+    return () => {
+      removeActiveHook(rootDb, atomRef)
+      unsubscribe(rootDb, key, watcherFn)
+    }
   }, [
     rootDb,
     key,
+    hookState,
     selector,
     shouldUpdateSelector,
-    value,
-    defaultState
+    defaultState,
+    atomRef
   ])
 
-  return value
+  return hookState
 }
 
 export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
+
+  useEffect(() => {
+    addActiveHook(rootDb, atomRef)
+
+    return () => {
+      removeActiveHook(rootDb, atomRef)
+    }
+  }, [rootDb, atomRef])
 
   return useMemo(
     () =>
@@ -221,8 +277,8 @@ export function useResetAtom<T>(atomRef: AtomRef<T>) {
   const mutate = useSetAtom(atomRef)
 
   return useMemo(() => {
-    const reset = () => atomRef.defaultState
-
-    mutate(reset, undefined)
+    return () => {
+      mutate(resetAtom, atomRef.defaultState)
+    }
   }, [mutate, atomRef.defaultState])
 }
