@@ -1,3 +1,4 @@
+import dynamic from 'next/dynamic'
 import {
   createContext,
   useContext,
@@ -35,13 +36,21 @@ function setState<T>(
   db: Db<T>,
   newState: T,
   atomRef: AtomRef<T>,
-  mutationFn: Function
+  mutationFn: Function,
+  mutationPayload: any
 ) {
   const oldState = db.state
   db.state = newState
 
   const forEachHandler = (fn: WatcherFn) =>
-    fn(oldState, newState, atomRef, mutationFn, db)
+    fn(
+      oldState,
+      newState,
+      atomRef,
+      mutationFn,
+      mutationPayload,
+      db
+    )
   const subs =
     db.subscriptions.get(atomRef.key) || new Set()
   const internalSubs =
@@ -115,7 +124,8 @@ function removeActiveHook<T>(
         [atomRef.key]: atomRef.defaultState
       },
       atomRef,
-      resetInactiveAtom
+      resetInactiveAtom,
+      atomRef.defaultState
     )
     db.activeHooks.delete(atomRef.key)
   }
@@ -196,6 +206,168 @@ export function AtomObserver({
   })
 
   return null
+}
+
+interface Entry {
+  timestamp: number
+  state: any
+  action: {
+    functionName: string
+    payload: any
+    atomKey: string
+  }
+}
+
+const mockEntries = (logSize: number): Entry[] =>
+  new Array(logSize).fill(0).map((_, index) => ({
+    timestamp: index,
+    state: {
+      entry: `foo ${index}`,
+      foo: 'bar',
+      some: {
+        nested: 'state'
+      }
+    },
+    action: {
+      atomKey: 'mockAtomKey',
+      functionName: 'mockRow',
+      payload: 'mockPayload'
+    }
+  }))
+
+export function AtomDevTools({ logSize = 50 }) {
+  const ReactJson = useMemo(() => {
+    return dynamic(() => import('react-json-view'), {
+      ssr: false
+    })
+  }, [])
+  const [log, setLog] = useState<Entry[]>(
+    mockEntries(logSize)
+  )
+  const addLogEntry = (entry: Entry) => {
+    const newLog = [entry, ...log.slice(0, logSize - 1)]
+
+    setLog(newLog)
+  }
+  const columnDefs: {
+    headerName: string
+    width: number | string
+    render: (row: Entry) => ReactChild | string | number
+  }[] = [
+    {
+      headerName: 'action',
+      width: '40%',
+      render(row) {
+        return (
+          <ReactJson
+            src={row.action}
+            name={null}
+            displayDataTypes={false}
+            collapsed={1}
+          />
+        )
+      }
+    },
+    {
+      headerName: 'state',
+      width: '60%',
+      render(row) {
+        return (
+          <ReactJson
+            src={row.state}
+            name={null}
+            displayDataTypes={false}
+            collapsed={2}
+          />
+        )
+      }
+    },
+    {
+      headerName: 'timestamp',
+      width: 150,
+      render(row) {
+        return row.timestamp
+      }
+    }
+  ]
+
+  return (
+    <div>
+      <h2>React Atomic devtools</h2>
+      <AtomObserver
+        onChange={(
+          _oldState,
+          newState,
+          atomRef,
+          mutationFn,
+          mutationPayload,
+          _db
+        ) => {
+          addLogEntry({
+            timestamp: performance.now(),
+            state: newState,
+            action: {
+              functionName: mutationFn.name,
+              payload: mutationPayload,
+              atomKey: atomRef.key
+            }
+          })
+        }}
+      />
+      {/*
+       * TODO: use a virual scrolling table component so we
+       * can scroll through all entries without slowing
+       * things down
+       */}
+      <table style={{ width: '100%' }}>
+        <thead style={{ display: 'block' }}>
+          <tr>
+            {columnDefs.map(({ headerName, width }) => (
+              <th
+                key={headerName}
+                style={{
+                  textAlign: 'left',
+                  width,
+                  minWidth: width
+                }}
+              >
+                {headerName}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody
+          style={{
+            display: 'block',
+            height: 300,
+            width: '100%',
+            overflowY: 'scroll',
+            overflowX: 'hidden'
+          }}
+        >
+          {log.slice(0, 5).map((entry) => (
+            <tr key={entry.timestamp}>
+              {columnDefs.map(
+                ({ headerName, width, render }) => (
+                  <td
+                    key={headerName}
+                    style={{
+                      width,
+                      minWidth: width,
+                      verticalAlign: 'top',
+                      borderBottom: '1px solid #ccc'
+                    }}
+                  >
+                    {render(entry)}
+                  </td>
+                )
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 export function useReadAtom<T, SelectorValue = T>(
@@ -283,7 +455,13 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
           ...rootState,
           [key]: mutationFn(stateSlice, payload)
         }
-        setState(rootDb, nextState, atomRef, mutationFn)
+        setState(
+          rootDb,
+          nextState,
+          atomRef,
+          mutationFn,
+          payload
+        )
       },
     [defaultState, rootDb, key, atomRef]
   )

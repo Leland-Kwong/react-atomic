@@ -24,6 +24,7 @@ export type WatcherFn = (
   newState: DbState,
   atomRef: AtomRef<any>,
   mutationFn: Function,
+  mutationPayload: any,
   db: Db<any>
 ) => void
 

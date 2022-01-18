@@ -3,33 +3,36 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import {
-  atom,
-  useAtom,
+  atomRef,
+  useReadAtom,
   useSetAtom,
-  AtomRoot
+  AtomRoot,
+  AtomDevTools
 } from '../libs/atomic-state'
 
 interface Hello {
   text: string
+  foo: 'bar'
 }
 
-const helloRef = atom<Hello>({
+const helloRef = atomRef<Hello>({
   key: 'Hello',
-  defaultState: { text: 'Hello world' }
+  defaultState: { text: 'Hello world', foo: 'bar' }
 })
 
 type TimeElapsed = number
 
-const timerRef = atom<TimeElapsed>({
+const timerRef = atomRef<TimeElapsed>({
   key: 'TimeElapsed',
   defaultState: 0
 })
 
 const tick = (time: TimeElapsed, incrementBy: number) =>
   time + incrementBy
+const identity = <T,>(x: T) => x
 
 const SubComponent = () => {
-  const count = useAtom(timerRef, (s) => s)
+  const count = useReadAtom(timerRef, identity)
   const update = useSetAtom(timerRef)
 
   useEffect(() => {
@@ -43,13 +46,16 @@ const SubComponent = () => {
   return <div>Time Elapsed: {count}s</div>
 }
 
-const setText = (_: Hello, text: string) => ({ text })
+const setText = (s: Hello, text: string) => ({
+  ...s,
+  text
+})
 
-const AtomicStateDemo = () => {
-  const text = useAtom(helloRef, (s) => s.text)
+const AtomAppDemo = () => {
+  const text = useReadAtom(helloRef, (s) => s.text)
   const update = useSetAtom(helloRef)
   const showSubComponent = text.length > 0
-  const count = useAtom(timerRef, (s) => s)
+  const count = useReadAtom(timerRef, identity)
 
   return (
     <div>
@@ -79,10 +85,11 @@ const Home: NextPage = () => {
       </Head>
 
       <main>
-        <h1>Atomic State</h1>
+        <h1>React Atomic</h1>
 
         <AtomRoot>
-          <AtomicStateDemo />
+          <AtomAppDemo />
+          <AtomDevTools />
         </AtomRoot>
       </main>
     </div>
