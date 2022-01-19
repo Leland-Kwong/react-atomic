@@ -23,7 +23,8 @@ import type {
   DbState,
   WatcherFn,
   Db,
-  AtomObserverProps
+  AtomObserverProps,
+  DevToolsLogEntry
 } from './types'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -193,17 +194,7 @@ export function AtomObserver({
   return null
 }
 
-interface Entry {
-  timestamp: number
-  state: any
-  action: {
-    functionName: string
-    payload: any
-    atomKey: string
-  }
-}
-
-const mockEntries = (logSize: number): Entry[] =>
+const mockEntries = (logSize: number): DevToolsLogEntry[] =>
   new Array(logSize).fill(0).map((_, index) => ({
     timestamp: index,
     state: {
@@ -226,11 +217,14 @@ export function AtomDevTools({ logSize = 50 }) {
       ssr: false
     })
   }, [])
-  const [log, setLog] = useState<Entry[]>(
+  const [log, setLog] = useState<DevToolsLogEntry[]>(
     mockEntries(logSize)
   )
+  const [hookInfo, setHookInfo] = useState<{
+    [key: string]: number
+  }>({})
   const addLogEntry = useMemo(
-    () => (entry: Entry) => {
+    () => (entry: DevToolsLogEntry) => {
       setLog((oldLog) => [
         entry,
         ...oldLog.slice(0, logSize - 1)
@@ -241,7 +235,9 @@ export function AtomDevTools({ logSize = 50 }) {
   const columnDefs: {
     headerName: string
     width: number | string
-    render: (row: Entry) => ReactChild | string | number
+    render: (
+      row: DevToolsLogEntry
+    ) => ReactChild | string | number
   }[] = [
     {
       headerName: 'action',
@@ -299,7 +295,12 @@ export function AtomDevTools({ logSize = 50 }) {
           })
         },
         onLifeCycle: (data) => {
+          const { key, hookCount } = data
           console.log('lifeCycle', data)
+          setHookInfo((info) => ({
+            ...info,
+            [key]: hookCount
+          }))
         }
       }
     }, [addLogEntry])
@@ -308,6 +309,13 @@ export function AtomDevTools({ logSize = 50 }) {
     <div>
       <h2>React Atomic devtools</h2>
       <AtomObserver {...atomObserverProps} />
+      <div>
+        <ReactJson
+          src={hookInfo}
+          name="activeHooks"
+          displayDataTypes={false}
+        />
+      </div>
       {/*
        * TODO: use a virual scrolling table component so we
        * can scroll through all entries without slowing

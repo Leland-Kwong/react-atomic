@@ -55,3 +55,13 @@ export interface AtomObserverProps {
   onChange: WatcherFn
   onLifeCycle?: LifecycleFn
 }
+
+export interface DevToolsLogEntry {
+  timestamp: number
+  state: any
+  action: {
+    functionName: string
+    payload: any
+    atomKey: string
+  }
+}
