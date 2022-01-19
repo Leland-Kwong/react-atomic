@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect, useMemo } from 'react'
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
@@ -6,18 +7,30 @@ import {
   atomRef,
   useReadAtom,
   useSetAtom,
-  AtomRoot,
-  AtomDevTools
+  AtomRoot
 } from '../libs/atomic-state'
 
 interface Hello {
   text: string
-  foo: 'bar'
+  showTimer: boolean
 }
 
 const helloRef = atomRef<Hello>({
   key: 'Hello',
-  defaultState: { text: 'Hello world', foo: 'bar' }
+  defaultState: {
+    text: 'Hello world',
+    showTimer: true
+  }
+})
+
+const setText = (s: Hello, text: string) => ({
+  ...s,
+  text
+})
+
+const toggleShowTimer = (s: Hello, show: boolean) => ({
+  ...s,
+  showTimer: show
 })
 
 type TimeElapsed = number
@@ -31,48 +44,69 @@ const tick = (time: TimeElapsed, incrementBy: number) =>
   time + incrementBy
 const identity = <T,>(x: T) => x
 
-const SubComponent = () => {
+const Timer = () => {
   const count = useReadAtom(timerRef, identity)
-  const update = useSetAtom(timerRef)
+  const sendTimer = useSetAtom(timerRef)
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      update(tick, 1)
+      sendTimer(tick, 1)
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [update, count])
+  }, [sendTimer, count])
 
   return <div>Time Elapsed: {count}s</div>
 }
 
-const setText = (s: Hello, text: string) => ({
-  ...s,
-  text
-})
-
 const AtomAppDemo = () => {
   const text = useReadAtom(helloRef, (s) => s.text)
-  const update = useSetAtom(helloRef)
-  const showSubComponent = text.length > 0
-  const count = useReadAtom(timerRef, identity)
+  const showTimer = useReadAtom(
+    helloRef,
+    (s) => s.showTimer
+  )
+  const sendHello = useSetAtom(helloRef)
 
   return (
     <div>
-      <input
-        type="text"
-        value={text}
-        onChange={(ev) => {
-          update(setText, ev.target.value)
-        }}
-      />
-      {showSubComponent && <SubComponent />}
-      <div>Count: {count}</div>
+      <div>
+        <input
+          type="text"
+          value={text}
+          onChange={(ev) => {
+            sendHello(setText, ev.target.value)
+          }}
+        />
+      </div>
+      <div>
+        <label>
+          <input
+            type="checkbox"
+            onChange={(ev) => {
+              sendHello(toggleShowTimer, ev.target.checked)
+            }}
+            checked={showTimer}
+          />
+          clock enabled
+        </label>
+        {showTimer && <Timer />}
+      </div>
     </div>
   )
 }
 
 const Home: NextPage = () => {
+  const AtomDevTools = useMemo(
+    () =>
+      dynamic(
+        async () =>
+          (await import('../libs/atomic-state'))
+            .AtomDevTools,
+        { ssr: false }
+      ),
+    []
+  )
+
   return (
     <div className={styles.container}>
       <Head>
