@@ -296,7 +296,7 @@ export function AtomDevTools({ logSize = 50 }) {
         },
         onLifeCycle: (data) => {
           const { key, hookCount } = data
-          console.log('lifeCycle', data)
+
           setHookInfo((info) => ({
             ...info,
             [key]: hookCount
