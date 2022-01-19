@@ -12,13 +12,18 @@ import {
 } from 'react'
 import type { ReactChild } from 'react'
 
-import { $$internal } from './constants'
+import {
+  noop,
+  $$internal,
+  $$lifeCycleChannel
+} from './constants'
 import type {
   DefaultAtomOptions,
   AtomRef,
   DbState,
   WatcherFn,
-  Db
+  Db,
+  AtomObserverProps
 } from './types'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -26,7 +31,8 @@ function defaultTo<T>(defaultValue: T, value: T) {
 }
 
 function makeDb<T>(initialState: T): Db<T> {
-  const subscriptions = new Emittery()
+  const subscriptions: Db<T>['subscriptions'] =
+    new Emittery()
 
   return {
     state: initialState,
@@ -67,7 +73,13 @@ function resetInactiveAtom<T>(_: T, value: T) {
 
 function addActiveHook<T>(db: Db<T>, atomRef: AtomRef<T>) {
   const hookCount = db.activeHooks.get(atomRef.key) || 0
-  db.activeHooks.set(atomRef.key, hookCount + 1)
+  const newHookCount = hookCount + 1
+  db.activeHooks.set(atomRef.key, newHookCount)
+  db.subscriptions.emit($$lifeCycleChannel, {
+    type: 'mount',
+    key: atomRef.key,
+    hookCount: newHookCount
+  })
 }
 
 function removeActiveHook<T>(
@@ -77,6 +89,11 @@ function removeActiveHook<T>(
   const hookCount = db.activeHooks.get(atomRef.key) || 0
   const newHookCount = Math.max(0, hookCount - 1)
   db.activeHooks.set(atomRef.key, newHookCount)
+  db.subscriptions.emit($$lifeCycleChannel, {
+    type: 'unmount',
+    key: atomRef.key,
+    hookCount: newHookCount
+  })
 
   const isAtomActive = newHookCount > 0
   if (!isAtomActive) {
@@ -155,18 +172,23 @@ export function AtomRoot({
 }
 
 export function AtomObserver({
-  onChange
-}: {
-  onChange: WatcherFn
-}) {
+  onChange,
+  onLifeCycle = noop
+}: AtomObserverProps) {
   const rootDb = useContext(RootContext)
 
   useEffect(() => {
     rootDb.subscriptions.on($$internal, onChange)
+    rootDb.subscriptions.on($$lifeCycleChannel, onLifeCycle)
+
     return () => {
       rootDb.subscriptions.off($$internal, onChange)
+      rootDb.subscriptions.off(
+        $$lifeCycleChannel,
+        onLifeCycle
+      )
     }
-  }, [onChange, rootDb])
+  }, [onChange, onLifeCycle, rootDb])
 
   return null
 }
@@ -207,11 +229,15 @@ export function AtomDevTools({ logSize = 50 }) {
   const [log, setLog] = useState<Entry[]>(
     mockEntries(logSize)
   )
-  const addLogEntry = (entry: Entry) => {
-    const newLog = [entry, ...log.slice(0, logSize - 1)]
-
-    setLog(newLog)
-  }
+  const addLogEntry = useMemo(
+    () => (entry: Entry) => {
+      setLog((oldLog) => [
+        entry,
+        ...oldLog.slice(0, logSize - 1)
+      ])
+    },
+    [logSize]
+  )
   const columnDefs: {
     headerName: string
     width: number | string
@@ -253,12 +279,10 @@ export function AtomDevTools({ logSize = 50 }) {
       }
     }
   ]
-
-  return (
-    <div>
-      <h2>React Atomic devtools</h2>
-      <AtomObserver
-        onChange={({
+  const atomObserverProps =
+    useMemo((): AtomObserverProps => {
+      return {
+        onChange: ({
           newState,
           atomRef,
           mutationFn,
@@ -273,8 +297,17 @@ export function AtomDevTools({ logSize = 50 }) {
               atomKey: atomRef.key
             }
           })
-        }}
-      />
+        },
+        onLifeCycle: (data) => {
+          console.log('lifeCycle', data)
+        }
+      }
+    }, [addLogEntry])
+
+  return (
+    <div>
+      <h2>React Atomic devtools</h2>
+      <AtomObserver {...atomObserverProps} />
       {/*
        * TODO: use a virual scrolling table component so we
        * can scroll through all entries without slowing

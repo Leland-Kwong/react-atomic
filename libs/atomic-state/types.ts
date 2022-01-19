@@ -1,5 +1,7 @@
 import Emittery from 'emittery'
 
+import { $$internal, $$lifeCycleChannel } from './constants'
+
 export interface DefaultAtomOptions<T> {
   shouldUpdateSelector: <SelectorValue = T>(
     oldValue: SelectorValue,
@@ -17,7 +19,28 @@ export interface DbState {
   [key: string]: any
 }
 
-interface EventData {
+export interface Db<T> {
+  state: Readonly<DbState>
+  subscriptions: Emittery<
+    {
+      [key: AtomRef<T>['key']]: WatcherEventData
+      [$$internal]: WatcherEventData
+    } & {
+      [$$lifeCycleChannel]: LifeCycleEventData
+    }
+  >
+  activeHooks: Map<AtomRef<T>['key'], number>
+}
+
+interface LifeCycleEventData {
+  type: string
+  key: AtomRef<any>['key']
+  hookCount: number
+}
+
+export type LifecycleFn = (data: LifeCycleEventData) => void
+
+interface WatcherEventData {
   oldState: DbState
   newState: DbState
   atomRef: AtomRef<any>
@@ -26,10 +49,9 @@ interface EventData {
   db: Db<any>
 }
 
-export type WatcherFn = (data: EventData) => void
+export type WatcherFn = (data: WatcherEventData) => void
 
-export interface Db<T> {
-  state: Readonly<DbState>
-  subscriptions: Emittery
-  activeHooks: Map<AtomRef<T>['key'], number>
+export interface AtomObserverProps {
+  onChange: WatcherFn
+  onLifeCycle?: LifecycleFn
 }
