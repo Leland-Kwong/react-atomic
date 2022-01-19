@@ -1,6 +1,7 @@
 // TODO: add ability to pause mutations. This will be useful
 // for debugging purposes.
 
+import Emittery from 'emittery'
 import dynamic from 'next/dynamic'
 import {
   createContext,
@@ -13,7 +14,6 @@ import type { ReactChild } from 'react'
 
 import { $$internal } from './constants'
 import type {
-  $$Internal,
   DefaultAtomOptions,
   AtomRef,
   DbState,
@@ -26,7 +26,7 @@ function defaultTo<T>(defaultValue: T, value: T) {
 }
 
 function makeDb<T>(initialState: T): Db<T> {
-  const subscriptions: Db<T>['subscriptions'] = new Map()
+  const subscriptions = new Emittery()
 
   return {
     state: initialState,
@@ -43,62 +43,22 @@ function setState<T>(
   mutationPayload: any
 ) {
   const oldState = db.state
-  db.state = newState
+  const eventData = {
+    oldState,
+    newState,
+    atomRef,
+    mutationFn,
+    mutationPayload,
+    db
+  }
 
-  const forEachHandler = (fn: WatcherFn) =>
-    fn(
-      oldState,
-      newState,
-      atomRef,
-      mutationFn,
-      mutationPayload,
-      db
-    )
-  const subs =
-    db.subscriptions.get(atomRef.key) || new Set()
-  const internalSubs =
-    db.subscriptions.get($$internal) || new Set()
-  subs.forEach(forEachHandler)
-  internalSubs.forEach(forEachHandler)
+  db.state = newState
+  db.subscriptions.emit(atomRef.key, eventData)
+  db.subscriptions.emit($$internal, eventData)
 }
 
 function getState<T>(db: Db<T>) {
   return db.state
-}
-
-function subscribe<T>(
-  db: Db<T>,
-  key: AtomRef<T>['key'] | $$Internal,
-  fn: WatcherFn
-): void {
-  const subs = db.subscriptions.get(key)
-
-  if (!subs) {
-    db.subscriptions.set(key, new Set())
-    subscribe(db, key, fn)
-    return
-  }
-
-  subs.add(fn)
-}
-
-function unsubscribe<T>(
-  db: Db<T>,
-  key: AtomRef<T>['key'] | $$Internal,
-  fn: WatcherFn
-) {
-  const subs = db.subscriptions.get(key)
-
-  if (!subs) {
-    return
-  }
-
-  subs.delete(fn)
-
-  const shouldCleanup = subs.size === 0
-  if (shouldCleanup) {
-    db.subscriptions.delete(key)
-  }
 }
 
 function resetInactiveAtom<T>(_: T, value: T) {
@@ -202,9 +162,9 @@ export function AtomObserver({
   const rootDb = useContext(RootContext)
 
   useEffect(() => {
-    subscribe(rootDb, $$internal, onChange)
+    rootDb.subscriptions.on($$internal, onChange)
     return () => {
-      unsubscribe(rootDb, $$internal, onChange)
+      rootDb.subscriptions.off($$internal, onChange)
     }
   }, [onChange, rootDb])
 
@@ -298,13 +258,12 @@ export function AtomDevTools({ logSize = 50 }) {
     <div>
       <h2>React Atomic devtools</h2>
       <AtomObserver
-        onChange={(
-          _oldState,
+        onChange={({
           newState,
           atomRef,
           mutationFn,
           mutationPayload
-        ) => {
+        }) => {
           addLogEntry({
             timestamp: performance.now(),
             state: newState,
@@ -386,7 +345,7 @@ export function useReadAtom<T, SelectorValue = T>(
   )
 
   useEffect(() => {
-    const watcherFn: WatcherFn = (_, newState) => {
+    const watcherFn: WatcherFn = ({ newState }) => {
       const stateSlice = newState[key]
       const nextValue = selector(stateSlice)
 
@@ -398,11 +357,11 @@ export function useReadAtom<T, SelectorValue = T>(
     }
 
     addActiveHook(rootDb, atomRef)
-    subscribe(rootDb, key, watcherFn)
+    rootDb.subscriptions.on(key, watcherFn)
 
     return () => {
       removeActiveHook(rootDb, atomRef)
-      unsubscribe(rootDb, key, watcherFn)
+      rootDb.subscriptions.off(key, watcherFn)
     }
   }, [
     rootDb,

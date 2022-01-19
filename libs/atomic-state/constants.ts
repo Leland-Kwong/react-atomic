@@ -1,1 +1,1 @@
-export const $$internal = Symbol('$$atom.internal')
+export const $$internal = '$$atom.internal'

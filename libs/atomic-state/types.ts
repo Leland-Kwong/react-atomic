@@ -1,6 +1,4 @@
-import { $$internal } from './constants'
-
-export type $$Internal = typeof $$internal
+import Emittery from 'emittery'
 
 export interface DefaultAtomOptions<T> {
   shouldUpdateSelector: <SelectorValue = T>(
@@ -19,22 +17,19 @@ export interface DbState {
   [key: string]: any
 }
 
-export type WatcherFn = (
-  oldState: DbState,
-  newState: DbState,
-  atomRef: AtomRef<any>,
-  mutationFn: Function,
-  mutationPayload: any,
+interface EventData {
+  oldState: DbState
+  newState: DbState
+  atomRef: AtomRef<any>
+  mutationFn: Function
+  mutationPayload: any
   db: Db<any>
-) => void
+}
 
-type Subscription = WatcherFn
+export type WatcherFn = (data: EventData) => void
 
 export interface Db<T> {
   state: Readonly<DbState>
-  subscriptions: Map<
-    AtomRef<T>['key'] | $$Internal,
-    Set<Subscription>
-  >
+  subscriptions: Emittery
   activeHooks: Map<AtomRef<T>['key'], number>
 }
