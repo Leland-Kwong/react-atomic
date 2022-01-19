@@ -1,3 +1,8 @@
+// FIXME: theres a bug where not all lifecycle hook counts
+// are properly sent on AtomRoot mount. This probably
+// happens because the devtools is not mounted before other
+// hooks.
+
 // TODO: add ability to pause mutations. This will be useful
 // for debugging purposes.
 
@@ -147,7 +152,6 @@ export function AtomRoot({
   children: ReactChild | ReactChild[]
 }) {
   const rootDb = useContext(RootContext)
-  const initialDb = useMemo(() => makeDb<DbState>({}), [])
   const isNestedAtomRoot = rootDb !== defaultContext
 
   if (
@@ -159,8 +163,10 @@ export function AtomRoot({
     )
   }
 
+  const db = makeDb<DbState>({})
+
   return (
-    <RootContext.Provider value={initialDb}>
+    <RootContext.Provider value={db}>
       {children}
     </RootContext.Provider>
   )
@@ -211,7 +217,7 @@ export function useReadAtom<T, SelectorValue = T>(
   return hookState
 }
 
-export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
+export function useSendAtom<T, U = T>(atomRef: AtomRef<T>) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
 
@@ -264,7 +270,7 @@ export function useSetAtom<T, U = T>(atomRef: AtomRef<T>) {
 }
 
 export function useResetAtom<T>(atomRef: AtomRef<T>) {
-  const mutate = useSetAtom(atomRef)
+  const mutate = useSendAtom(atomRef)
 
   return useMemo(() => {
     return () => {

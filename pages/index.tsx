@@ -6,47 +6,53 @@ import styles from '../styles/Home.module.css'
 import {
   atomRef,
   useReadAtom,
-  useSetAtom,
+  useSendAtom,
   AtomRoot
 } from '../libs/atomic-state'
 
-interface Hello {
-  text: string
+interface Hello$ {
+  message: string
   showTimer: boolean
 }
 
-const helloRef = atomRef<Hello>({
+const helloRef = atomRef<Hello$>({
   key: 'Hello',
   defaultState: {
-    text: 'Hello world',
+    message: 'Hello world',
     showTimer: true
   }
 })
 
-const setText = (s: Hello, text: string) => ({
+const newMessage = (
+  s: Hello$,
+  message: string
+): Hello$ => ({
   ...s,
-  text
+  message
 })
 
-const toggleShowTimer = (s: Hello, show: boolean) => ({
+const toggleShowTimer = (
+  s: Hello$,
+  show: boolean
+): Hello$ => ({
   ...s,
   showTimer: show
 })
 
-type TimeElapsed = number
+type Clock$ = number
 
-const timerRef = atomRef<TimeElapsed>({
-  key: 'TimeElapsed',
+const timerRef = atomRef<Clock$>({
+  key: 'Clock',
   defaultState: 0
 })
 
-const tick = (time: TimeElapsed, incrementBy: number) =>
+const tick = (time: Clock$, incrementBy: number) =>
   time + incrementBy
 const identity = <T,>(x: T) => x
 
 const Timer = () => {
   const count = useReadAtom(timerRef, identity)
-  const sendTimer = useSetAtom(timerRef)
+  const sendTimer = useSendAtom(timerRef)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -60,12 +66,12 @@ const Timer = () => {
 }
 
 const AtomAppDemo = () => {
-  const text = useReadAtom(helloRef, (s) => s.text)
+  const text = useReadAtom(helloRef, (s) => s.message)
   const showTimer = useReadAtom(
     helloRef,
     (s) => s.showTimer
   )
-  const sendHello = useSetAtom(helloRef)
+  const sendHello = useSendAtom(helloRef)
 
   return (
     <div>
@@ -74,7 +80,7 @@ const AtomAppDemo = () => {
           type="text"
           value={text}
           onChange={(ev) => {
-            sendHello(setText, ev.target.value)
+            sendHello(newMessage, ev.target.value)
           }}
         />
       </div>
