@@ -2,18 +2,16 @@
 // for debugging purposes.
 
 import Emittery from 'emittery'
-import dynamic from 'next/dynamic'
 import {
-  createContext,
   useContext,
   useEffect,
   useMemo,
   useState
 } from 'react'
 import type { ReactChild } from 'react'
-
 import {
-  noop,
+  defaultContext,
+  RootContext,
   $$internal,
   $$lifeCycleChannel
 } from './constants'
@@ -22,9 +20,7 @@ import type {
   AtomRef,
   DbState,
   WatcherFn,
-  Db,
-  AtomObserverProps,
-  DevToolsLogEntry
+  Db
 } from './types'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -68,7 +64,7 @@ function getState<T>(db: Db<T>) {
   return db.state
 }
 
-function resetInactiveAtom<T>(_: T, value: T) {
+function $$resetInactiveAtom<T>(_: T, value: T) {
   return value
 }
 
@@ -105,7 +101,7 @@ function removeActiveHook<T>(
         [atomRef.key]: atomRef.defaultState
       },
       atomRef,
-      resetInactiveAtom,
+      $$resetInactiveAtom,
       atomRef.defaultState
     )
     db.activeHooks.delete(atomRef.key)
@@ -123,10 +119,8 @@ const atomRefBaseDefaultOptions: Readonly<
     oldValue !== newValue
 }
 
-const defaultContextDb = makeDb<DbState>({})
-const RootContext = createContext(defaultContextDb)
-
 export type { AtomRef } from './types'
+export { AtomDevTools } from './AtomDevTools'
 
 export function atomRef<T>({
   key,
@@ -154,7 +148,7 @@ export function AtomRoot({
 }) {
   const rootDb = useContext(RootContext)
   const initialDb = useMemo(() => makeDb<DbState>({}), [])
-  const isNestedAtomRoot = rootDb !== defaultContextDb
+  const isNestedAtomRoot = rootDb !== defaultContext
 
   if (
     process.env.NODE_ENV === 'development' &&
@@ -169,206 +163,6 @@ export function AtomRoot({
     <RootContext.Provider value={initialDb}>
       {children}
     </RootContext.Provider>
-  )
-}
-
-export function AtomObserver({
-  onChange,
-  onLifeCycle = noop
-}: AtomObserverProps) {
-  const rootDb = useContext(RootContext)
-
-  useEffect(() => {
-    rootDb.subscriptions.on($$internal, onChange)
-    rootDb.subscriptions.on($$lifeCycleChannel, onLifeCycle)
-
-    return () => {
-      rootDb.subscriptions.off($$internal, onChange)
-      rootDb.subscriptions.off(
-        $$lifeCycleChannel,
-        onLifeCycle
-      )
-    }
-  }, [onChange, onLifeCycle, rootDb])
-
-  return null
-}
-
-const mockEntries = (logSize: number): DevToolsLogEntry[] =>
-  new Array(logSize).fill(0).map((_, index) => ({
-    timestamp: index,
-    state: {
-      entry: `foo ${index}`,
-      foo: 'bar',
-      some: {
-        nested: 'state'
-      }
-    },
-    action: {
-      atomKey: 'mockAtomKey',
-      functionName: 'mockRow',
-      payload: 'mockPayload'
-    }
-  }))
-
-export function AtomDevTools({ logSize = 50 }) {
-  const ReactJson = useMemo(() => {
-    return dynamic(() => import('react-json-view'), {
-      ssr: false
-    })
-  }, [])
-  const [log, setLog] = useState<DevToolsLogEntry[]>(
-    mockEntries(logSize)
-  )
-  const [hookInfo, setHookInfo] = useState<{
-    [key: string]: number
-  }>({})
-  const addLogEntry = useMemo(
-    () => (entry: DevToolsLogEntry) => {
-      setLog((oldLog) => [
-        entry,
-        ...oldLog.slice(0, logSize - 1)
-      ])
-    },
-    [logSize]
-  )
-  const columnDefs: {
-    headerName: string
-    width: number | string
-    render: (
-      row: DevToolsLogEntry
-    ) => ReactChild | string | number
-  }[] = [
-    {
-      headerName: 'action',
-      width: '40%',
-      render(row) {
-        return (
-          <ReactJson
-            src={row.action}
-            name={null}
-            displayDataTypes={false}
-            collapsed={1}
-          />
-        )
-      }
-    },
-    {
-      headerName: 'state',
-      width: '60%',
-      render(row) {
-        return (
-          <ReactJson
-            src={row.state}
-            name={null}
-            displayDataTypes={false}
-            collapsed={2}
-          />
-        )
-      }
-    },
-    {
-      headerName: 'timestamp',
-      width: 150,
-      render(row) {
-        return row.timestamp
-      }
-    }
-  ]
-  const atomObserverProps =
-    useMemo((): AtomObserverProps => {
-      return {
-        onChange: ({
-          newState,
-          atomRef,
-          mutationFn,
-          mutationPayload
-        }) => {
-          addLogEntry({
-            timestamp: performance.now(),
-            state: newState,
-            action: {
-              functionName: mutationFn.name,
-              payload: mutationPayload,
-              atomKey: atomRef.key
-            }
-          })
-        },
-        onLifeCycle: (data) => {
-          const { key, hookCount } = data
-
-          setHookInfo((info) => ({
-            ...info,
-            [key]: hookCount
-          }))
-        }
-      }
-    }, [addLogEntry])
-
-  return (
-    <div>
-      <h2>React Atomic devtools</h2>
-      <AtomObserver {...atomObserverProps} />
-      <div>
-        <ReactJson
-          src={hookInfo}
-          name="activeHooks"
-          displayDataTypes={false}
-        />
-      </div>
-      {/*
-       * TODO: use a virual scrolling table component so we
-       * can scroll through all entries without slowing
-       * things down
-       */}
-      <table style={{ width: '100%' }}>
-        <thead style={{ display: 'block' }}>
-          <tr>
-            {columnDefs.map(({ headerName, width }) => (
-              <th
-                key={headerName}
-                style={{
-                  textAlign: 'left',
-                  width,
-                  minWidth: width
-                }}
-              >
-                {headerName}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody
-          style={{
-            display: 'block',
-            height: 300,
-            width: '100%',
-            overflowY: 'scroll',
-            overflowX: 'hidden'
-          }}
-        >
-          {log.slice(0, 5).map((entry) => (
-            <tr key={entry.timestamp}>
-              {columnDefs.map(
-                ({ headerName, width, render }) => (
-                  <td
-                    key={headerName}
-                    style={{
-                      width,
-                      minWidth: width,
-                      verticalAlign: 'top',
-                      borderBottom: '1px solid #ccc'
-                    }}
-                  >
-                    {render(entry)}
-                  </td>
-                )
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   )
 }
 

@@ -58,7 +58,7 @@ export interface AtomObserverProps {
 
 export interface DevToolsLogEntry {
   timestamp: number
-  state: any
+  atomState: any
   action: {
     functionName: string
     payload: any
