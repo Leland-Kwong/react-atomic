@@ -35,7 +35,7 @@ export interface Db<T> {
 interface LifeCycleEventData {
   type: string
   key: AtomRef<any>['key']
-  hookCount: number
+  hookCount: Db<any>['activeHooks']
 }
 
 export type LifecycleFn = (data: LifeCycleEventData) => void

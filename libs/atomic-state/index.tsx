@@ -80,7 +80,7 @@ function addActiveHook<T>(db: Db<T>, atomRef: AtomRef<T>) {
   db.subscriptions.emit($$lifeCycleChannel, {
     type: 'mount',
     key: atomRef.key,
-    hookCount: newHookCount
+    hookCount: db.activeHooks
   })
 }
 
@@ -94,7 +94,7 @@ function removeActiveHook<T>(
   db.subscriptions.emit($$lifeCycleChannel, {
     type: 'unmount',
     key: atomRef.key,
-    hookCount: newHookCount
+    hookCount: db.activeHooks
   })
 
   const isAtomActive = newHookCount > 0

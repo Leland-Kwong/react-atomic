@@ -24,6 +24,11 @@ function AtomObserver({
   useEffect(() => {
     rootDb.subscriptions.on($$internal, onChange)
     rootDb.subscriptions.on($$lifeCycleChannel, onLifeCycle)
+    onLifeCycle({
+      type: 'mount',
+      key: $$lifeCycleChannel,
+      hookCount: rootDb.activeHooks
+    })
 
     return () => {
       rootDb.subscriptions.off($$internal, onChange)
@@ -75,12 +80,11 @@ export function AtomDevTools({ logSize = 50 }) {
           })
         },
         onLifeCycle: (data) => {
-          const { key, hookCount } = data
+          const { hookCount } = data
 
-          setHookInfo((info) => ({
-            ...info,
-            [key]: hookCount
-          }))
+          setHookInfo(() =>
+            Object.fromEntries(hookCount.entries())
+          )
         }
       }
     }, [addLogEntry])
