@@ -25,17 +25,19 @@ const helloRef = atomRef<$Hello>({
 
 // IMPORTANT: using this function enables typescript to check for
 // extraneous properties being merged in
-function merge<T>(baseProps: T, newProps: Partial<T>): T {
+function update<T>(baseProps: T, newProps: Partial<T>): T {
   return { ...baseProps, ...newProps }
 }
 
+const identity = <T,>(x: T) => x
+
 const newMessage = (s: $Hello, message: string) =>
-  merge(s, {
+  update(s, {
     message
   })
 
 const toggleShowTimer = (s: $Hello, showTimer: boolean) =>
-  merge(s, {
+  update(s, {
     showTimer
   })
 
@@ -48,7 +50,6 @@ const timerRef = atomRef<$Clock>({
 
 const tick = (time: $Clock, incrementBy: number) =>
   time + incrementBy
-const identity = <T,>(x: T) => x
 
 const Timer = () => {
   const count = useReadAtom(timerRef, identity)
