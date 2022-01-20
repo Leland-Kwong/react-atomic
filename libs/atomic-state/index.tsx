@@ -1,7 +1,6 @@
 // TODO: add ability to pause mutations. This will be useful
 // for debugging purposes.
 
-import Emittery from 'emittery'
 import {
   useContext,
   useEffect,
@@ -15,6 +14,7 @@ import {
   $$internal,
   $$lifeCycleChannel
 } from './constants'
+import { makeDb } from './db'
 import type {
   DefaultAtomOptions,
   AtomRef,
@@ -25,17 +25,6 @@ import type {
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
-}
-
-function makeDb<T>(initialState: T): Db<T> {
-  const subscriptions: Db<T>['subscriptions'] =
-    new Emittery()
-
-  return {
-    state: initialState,
-    subscriptions,
-    activeHooks: new Map()
-  }
 }
 
 function setState<T>(
