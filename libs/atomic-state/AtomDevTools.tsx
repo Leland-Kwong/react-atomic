@@ -102,7 +102,7 @@ export function AtomDevTools({ logSize = 50 }) {
         />
       </div>
       {/*
-       * TODO: use a virual scrolling table component so we
+       * TODO: use a virtual scrolling table component so we
        * can scroll through all entries without slowing
        * things down
        */}
