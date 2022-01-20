@@ -1,8 +1,3 @@
-// FIXME: theres a bug where not all lifecycle hook counts
-// are properly sent on AtomRoot mount. This probably
-// happens because the devtools is not mounted before other
-// hooks.
-
 // TODO: add ability to pause mutations. This will be useful
 // for debugging purposes.
 
