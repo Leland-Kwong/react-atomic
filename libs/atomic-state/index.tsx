@@ -201,7 +201,7 @@ export function useReadAtom<T, SelectorValue = T>(
   return hookState
 }
 
-export function useSendAtom<T, U = T>(atomRef: AtomRef<T>) {
+export function useSendAtom<T>(atomRef: AtomRef<T>) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
 
@@ -216,7 +216,7 @@ export function useSendAtom<T, U = T>(atomRef: AtomRef<T>) {
   return useMemo(
     () =>
       <Payload,>(
-        mutationFn: (oldState: U, payload: Payload) => U,
+        mutationFn: (oldState: T, payload: Payload) => T,
         payload: Payload
       ) => {
         if (
