@@ -10,12 +10,12 @@ import {
   AtomRoot
 } from '../libs/atomic-state'
 
-interface Hello$ {
+type $Hello = {
   message: string
   showTimer: boolean
 }
 
-const helloRef = atomRef<Hello$>({
+const helloRef = atomRef<$Hello>({
   key: 'Hello',
   defaultState: {
     message: 'Hello world',
@@ -23,30 +23,30 @@ const helloRef = atomRef<Hello$>({
   }
 })
 
-const newMessage = (
-  s: Hello$,
-  message: string
-): Hello$ => ({
-  ...s,
-  message
-})
+// IMPORTANT: using this function enables typescript to check for
+// extraneous properties being merged in
+function merge<T>(baseProps: T, newProps: Partial<T>): T {
+  return { ...baseProps, ...newProps }
+}
 
-const toggleShowTimer = (
-  s: Hello$,
-  show: boolean
-): Hello$ => ({
-  ...s,
-  showTimer: show
-})
+const newMessage = (s: $Hello, message: string) =>
+  merge(s, {
+    message
+  })
 
-type Clock$ = number
+const toggleShowTimer = (s: $Hello, showTimer: boolean) =>
+  merge(s, {
+    showTimer
+  })
 
-const timerRef = atomRef<Clock$>({
+type $Clock = number
+
+const timerRef = atomRef<$Clock>({
   key: 'Clock',
   defaultState: 0
 })
 
-const tick = (time: Clock$, incrementBy: number) =>
+const tick = (time: $Clock, incrementBy: number) =>
   time + incrementBy
 const identity = <T,>(x: T) => x
 
