@@ -132,9 +132,7 @@ export function atomRef<T>({
 
 export function useReadAtom<T, SelectorValue = T>(
   atomRef: AtomRef<T>,
-  selector: (state: T) => SelectorValue,
-  shouldUpdateSelector = atomRef.defaultOptions
-    .shouldUpdateSelector
+  selector: (state: T) => SelectorValue
 ) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
@@ -147,8 +145,9 @@ export function useReadAtom<T, SelectorValue = T>(
     const watcherFn: WatcherFn = ({ newState }) => {
       const stateSlice = newState[key]
       const nextValue = selector(stateSlice)
+      const hasChanged = hookState !== nextValue
 
-      if (!shouldUpdateSelector(hookState, nextValue)) {
+      if (!hasChanged) {
         return
       }
 
@@ -167,7 +166,6 @@ export function useReadAtom<T, SelectorValue = T>(
     key,
     hookState,
     selector,
-    shouldUpdateSelector,
     defaultState,
     atomRef
   ])
