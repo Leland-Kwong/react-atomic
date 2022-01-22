@@ -36,28 +36,68 @@ describe('react-atomic', () => {
     expect(result.current).toBe(3)
   })
 
-  // test('useSendAtom', async () => {
-  //   let callCount = 0
-  //   const mockSelector = jest.fn((d) => d)
-  //   const send = useSendAtom(ref)
+  test('useSendAtom', async () => {
+    const wrapper = ({ children }: { children: any }) => (
+      <AtomRoot>{children}</AtomRoot>
+    )
+    const mockSelector = jest.fn((d) => d)
+    const { result } = renderHook(
+      () => {
+        const readValue = useReadAtom(ref, mockSelector)
+        const sendAtom = useSendAtom(ref)
 
-  //   useReadAtom(ref, mockSelector)
-  //   await send(setTestState, 'bar')
+        return { readValue, sendAtom }
+      },
+      { wrapper }
+    )
 
-  //   expect(mockSelector.mock.calls).toEqual([
-  //     ['foo'],
-  //     ['bar']
-  //   ])
-  //   expect(useReadAtom(ref, mockSelector)).toBe('bar')
-  // })
+    await act(async () => {
+      await result.current.sendAtom(setTestState, 'baz')
+    })
 
-  // test('useResetAtom', () => {
-  //   const resetAtom = useResetAtom(ref)
-  //   const send = useSendAtom(ref)
+    expect(mockSelector.mock.calls).toEqual([
+      ['foo'],
+      ['baz'],
+      ['baz']
+    ])
+    expect(result.current.readValue).toBe('baz')
+  })
 
-  //   send(setTestState, 'bar')
-  //   resetAtom()
+  test('useResetAtom', async () => {
+    const mockWrapper = ({
+      children
+    }: {
+      children: any
+    }) => <AtomRoot>{children}</AtomRoot>
+    const mockSelector = jest.fn((d) => d)
+    const { result, rerender } = renderHook(
+      () => {
+        const readValue = useReadAtom(ref, mockSelector)
+        const resetAtom = useResetAtom(ref)
+        const sendAtom = useSendAtom(ref)
 
-  //   expect(useReadAtom(ref, (d) => d)).toBe('foo')
-  // })
+        return { readValue, resetAtom, sendAtom }
+      },
+      { wrapper: mockWrapper }
+    )
+
+    await act(async () => {
+      await result.current.sendAtom(setTestState, 'bar')
+    })
+    await act(async () => {
+      await result.current.resetAtom()
+    })
+
+    rerender()
+
+    expect(mockSelector.mock.calls).toEqual([
+      ['foo'],
+      ['bar'],
+      ['bar'],
+      ['foo'],
+      ['foo'],
+      ['foo']
+    ])
+    expect(result.current.readValue).toBe('foo')
+  })
 })
