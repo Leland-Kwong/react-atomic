@@ -189,7 +189,7 @@ export function useSendAtom<T>(atomRef: AtomRef<T>) {
 
   return useMemo(
     () =>
-      <Payload,>(
+      <Payload>(
         mutationFn: (oldState: T, payload: Payload) => T,
         payload: Payload
       ) => {
