@@ -7,18 +7,14 @@ import {
   useMemo,
   useState
 } from 'react'
-import type { ReactChild } from 'react'
 import {
-  defaultContext,
   RootContext,
   $$internal,
   $$lifeCycleChannel
 } from './constants'
-import { makeDb } from './db'
 import type {
   DefaultAtomOptions,
   AtomRef,
-  DbState,
   WatcherFn,
   Db
 } from './types'
@@ -45,8 +41,11 @@ function setState<T>(
   }
 
   db.state = newState
-  db.subscriptions.emit(atomRef.key, eventData)
-  db.subscriptions.emit($$internal, eventData)
+
+  return Promise.all([
+    db.subscriptions.emit(atomRef.key, eventData),
+    db.subscriptions.emit($$internal, eventData)
+  ])
 }
 
 function getState<T>(db: Db<T>) {
@@ -110,6 +109,7 @@ const atomRefBaseDefaultOptions: Readonly<
 
 export type { AtomRef } from './types'
 export { AtomDevTools } from './AtomDevTools'
+export { AtomRoot } from './AtomRoot'
 
 export function atomRef<T>({
   key,
@@ -128,32 +128,6 @@ export function atomRef<T>({
       ...defaultOptions
     }
   }
-}
-
-export function AtomRoot({
-  children
-}: {
-  children: ReactChild | ReactChild[]
-}) {
-  const rootDb = useContext(RootContext)
-  const isNestedAtomRoot = rootDb !== defaultContext
-
-  if (
-    process.env.NODE_ENV === 'development' &&
-    isNestedAtomRoot
-  ) {
-    console.error(
-      'Warning: Application tree may only be wrapped in a single `AtomRoot` component'
-    )
-  }
-
-  const db = makeDb<DbState>({})
-
-  return (
-    <RootContext.Provider value={db}>
-      {children}
-    </RootContext.Provider>
-  )
 }
 
 export function useReadAtom<T, SelectorValue = T>(
@@ -238,7 +212,8 @@ export function useSendAtom<T>(atomRef: AtomRef<T>) {
           ...rootState,
           [key]: mutationFn(stateSlice, payload)
         }
-        setState(
+
+        return setState(
           rootDb,
           nextState,
           atomRef,
