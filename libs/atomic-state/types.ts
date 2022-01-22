@@ -2,17 +2,9 @@ import Emittery from 'emittery'
 
 import { $$internal, $$lifeCycleChannel } from './constants'
 
-export interface DefaultAtomOptions<T> {
-  shouldUpdateSelector: <SelectorValue = T>(
-    oldValue: SelectorValue,
-    newValue: SelectorValue
-  ) => boolean
-}
-
 export interface AtomRef<T> {
   key: string
   defaultState: T
-  defaultOptions: DefaultAtomOptions<T>
 }
 
 export interface DbState {

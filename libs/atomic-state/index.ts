@@ -12,12 +12,7 @@ import {
   $$internal,
   $$lifeCycleChannel
 } from './constants'
-import type {
-  DefaultAtomOptions,
-  AtomRef,
-  WatcherFn,
-  Db
-} from './types'
+import type { AtomRef, WatcherFn, Db } from './types'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -67,14 +62,15 @@ function addActiveHook<T>(db: Db<T>, atomRef: AtomRef<T>) {
   })
 }
 
-function removeActiveHook<T>(
+async function removeActiveHook<T>(
   db: Db<T>,
   atomRef: AtomRef<T>
 ) {
   const hookCount = db.activeHooks.get(atomRef.key) || 0
   const newHookCount = Math.max(0, hookCount - 1)
+
   db.activeHooks.set(atomRef.key, newHookCount)
-  db.subscriptions.emit($$lifeCycleChannel, {
+  await db.subscriptions.emit($$lifeCycleChannel, {
     type: 'unmount',
     key: atomRef.key,
     hookCount: db.activeHooks
@@ -82,7 +78,9 @@ function removeActiveHook<T>(
 
   const isAtomActive = newHookCount > 0
   if (!isAtomActive) {
-    setState(
+    db.activeHooks.delete(atomRef.key)
+
+    return setState(
       db,
       {
         ...getState(db),
@@ -92,19 +90,11 @@ function removeActiveHook<T>(
       $$resetInactiveAtom,
       atomRef.defaultState
     )
-    db.activeHooks.delete(atomRef.key)
   }
 }
 
 function resetAtom<T>(_: T, defaultState: T) {
   return defaultState
-}
-
-const atomRefBaseDefaultOptions: Readonly<
-  DefaultAtomOptions<any>
-> = {
-  shouldUpdateSelector: (oldValue, newValue) =>
-    oldValue !== newValue
 }
 
 export type { AtomRef } from './types'
@@ -113,20 +103,14 @@ export { AtomRoot } from './AtomRoot'
 
 export function atomRef<T>({
   key,
-  defaultState,
-  defaultOptions
+  defaultState
 }: {
   key: AtomRef<T>['key']
   defaultState: AtomRef<T>['defaultState']
-  defaultOptions?: Partial<AtomRef<T>['defaultOptions']>
 }): Readonly<AtomRef<T>> {
   return {
     key,
-    defaultState,
-    defaultOptions: {
-      ...atomRefBaseDefaultOptions,
-      ...defaultOptions
-    }
+    defaultState
   }
 }
 
@@ -158,8 +142,9 @@ export function useReadAtom<T, SelectorValue = T>(
     rootDb.subscriptions.on(key, watcherFn)
 
     return () => {
-      removeActiveHook(rootDb, atomRef)
-      rootDb.subscriptions.off(key, watcherFn)
+      removeActiveHook(rootDb, atomRef).then(() => {
+        rootDb.subscriptions.off(key, watcherFn)
+      })
     }
   }, [
     rootDb,
