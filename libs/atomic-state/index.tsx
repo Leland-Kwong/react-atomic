@@ -230,7 +230,7 @@ export function useResetAtom<T>(atomRef: AtomRef<T>) {
 
   return useMemo(() => {
     return () => {
-      mutate(resetAtom, atomRef.defaultState)
+      return mutate(resetAtom, atomRef.defaultState)
     }
   }, [mutate, atomRef.defaultState])
 }
