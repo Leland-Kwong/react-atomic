@@ -1,6 +1,3 @@
-// TODO: add ability to pause mutations. This will be useful
-// for debugging purposes.
-
 import {
   useContext,
   useEffect,
