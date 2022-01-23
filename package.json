@@ -6,6 +6,7 @@
     "type": "git",
     "url": "https://github.com/Leland-Kwong/retomic.git"
   },
+  "author": "leland kwong",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
