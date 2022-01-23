@@ -79,13 +79,13 @@ async function removeActiveHook<T>(
   const isAtomActive = newHookCount > 0
   if (!isAtomActive) {
     db.activeHooks.delete(atomRef.key)
+    // remove the state key since the atom is inactive now
+    const { [atomRef.key]: _, ...newStateWithoutRef } =
+      getState(db)
 
     return setState(
       db,
-      {
-        ...getState(db),
-        [atomRef.key]: atomRef.defaultState
-      },
+      newStateWithoutRef,
       atomRef,
       $$resetInactiveAtom,
       atomRef.defaultState
@@ -128,7 +128,9 @@ export function useReadAtom<T, SelectorValue = T>(
   useEffect(() => {
     const watcherFn: WatcherFn = ({ newState }) => {
       const stateSlice = newState[key]
-      const nextValue = selector(stateSlice)
+      const nextValue = selector(
+        defaultTo(defaultState, stateSlice)
+      )
       const hasChanged = hookState !== nextValue
 
       if (!hasChanged) {
