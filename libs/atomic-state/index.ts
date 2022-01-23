@@ -25,13 +25,15 @@ function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
 
-function $$resetInactiveAtom<T>(_: T, value: T) {
-  return value
+function $$removeInactiveKey() {}
+
+function $$resetAtom<T>(_: T, defaultState: T) {
+  return defaultState
 }
 
 function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
   mutable.atomRefsByKey.delete(atomRef.key)
-  // remove the state key since the atom is inactive now
+  // remove the state key since is inactive
   const { [atomRef.key]: _, ...newStateWithoutRef } =
     getState(db)
 
@@ -39,13 +41,9 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
     db,
     newStateWithoutRef,
     atomRef,
-    $$resetInactiveAtom,
-    atomRef.defaultState
+    $$removeInactiveKey,
+    undefined
   )
-}
-
-function resetAtom<T>(_: T, defaultState: T) {
-  return defaultState
 }
 
 function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
@@ -69,33 +67,18 @@ function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
   return key
 }
 
-export type { AtomRef } from './types'
-export { AtomDevTools } from './AtomDevTools'
-export { AtomRoot } from './AtomRoot'
-
-export function atomRef<T>({
-  key,
-  defaultState
-}: {
-  key: AtomRef<T>['key']
-  defaultState: AtomRef<T>['defaultState']
-}): Readonly<AtomRef<T>> {
-  const actualKey = checkDuplicateAtomKey(key)
-  const ref = {
-    key: actualKey,
-    defaultState
-  }
-
-  mutable.atomRefsByKey.set(actualKey, ref)
-
-  return ref
-}
-
 function useLifeCycleEvents(
   db: Db<any>,
   atomRef: AtomRef<any>
 ) {
   useEffect(() => {
+    const hasLifeCycleListeners =
+      db.subscriptions.listenerCount($$lifeCycleChannel) > 0
+
+    if (!hasLifeCycleListeners) {
+      return
+    }
+
     const asyncMountEvent = db.subscriptions.emit(
       $$lifeCycleChannel,
       {
@@ -134,6 +117,28 @@ function useLifeCycle(db: Db<any>, atomRef: AtomRef<any>) {
 
   useLifeCycleEvents(db, atomRef)
   useEffect(handleAtomLifeCycleState, [db, atomRef])
+}
+
+export type { AtomRef } from './types'
+export { AtomDevTools } from './AtomDevTools'
+export { AtomRoot } from './AtomRoot'
+
+export function atomRef<T>({
+  key,
+  defaultState
+}: {
+  key: AtomRef<T>['key']
+  defaultState: AtomRef<T>['defaultState']
+}): Readonly<AtomRef<T>> {
+  const actualKey = checkDuplicateAtomKey(key)
+  const ref = {
+    key: actualKey,
+    defaultState
+  }
+
+  mutable.atomRefsByKey.set(actualKey, ref)
+
+  return ref
 }
 
 export function useReadAtom<T, SelectorValue = T>(
@@ -223,7 +228,7 @@ export function useResetAtom<T>(atomRef: AtomRef<T>) {
   const mutate = useSendAtom(atomRef)
 
   return useMemo(
-    () => () => mutate(resetAtom, atomRef.defaultState),
+    () => () => mutate($$resetAtom, atomRef.defaultState),
     [mutate, atomRef.defaultState]
   )
 }
