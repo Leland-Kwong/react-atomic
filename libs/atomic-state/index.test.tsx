@@ -8,7 +8,8 @@ import {
   useReadAtom,
   useResetAtom,
   useSendAtom,
-  AtomRoot
+  AtomRoot,
+  useIsNew
 } from '.'
 
 type State = { text: string }
@@ -124,5 +125,80 @@ describe('react-atomic', () => {
       [{ text: 'foo' }]
     ])
     expect(result.current.readValue).toBe(ref.defaultState)
+  })
+
+  describe('use cache', () => {
+    const mockWrapper = ({
+      value: _,
+      children
+    }: {
+      value: string
+      children?: any
+    }) => <AtomRoot>{children}</AtomRoot>
+
+    test('primitive compare', () => {
+      const { result, rerender } = renderHook(
+        (props) => {
+          const cachedFunction = useIsNew(
+            (value: string) => value
+          )
+          return cachedFunction(props.value)
+        },
+        {
+          wrapper: mockWrapper,
+          initialProps: { value: 'foo' }
+        }
+      )
+
+      rerender({ value: 'foo' })
+      expect(result.all[0]).toBe(result.all[1])
+      rerender({ value: 'bar' })
+      expect(result.all[1]).not.toBe(result.all[2])
+      expect(result.all.length).toBe(3)
+    })
+
+    test('shallow compare', () => {
+      const { result, rerender } = renderHook(
+        (props) => {
+          const cachedFunction = useIsNew(
+            ({ value }: { value: string }) => ({ value })
+          )
+
+          return cachedFunction({ value: props.value })
+        },
+        {
+          wrapper: mockWrapper,
+          initialProps: { value: 'foo' }
+        }
+      )
+
+      rerender({ value: 'foo' })
+      expect(result.all[0]).toBe(result.all[1])
+      rerender({ value: 'bar' })
+      expect(result.all[1]).not.toBe(result.all[2])
+      expect(result.all.length).toBe(3)
+    })
+
+    test('custom compare', () => {
+      const { result, rerender } = renderHook(
+        (props) => {
+          const cachedFunction = useIsNew(
+            ({ value }: { value: string }) => ({
+              value
+            }),
+            (prev, next) => prev !== next
+          )
+          return cachedFunction({ value: props.value })
+        },
+        {
+          wrapper: mockWrapper,
+          initialProps: { value: 'foo' }
+        }
+      )
+
+      rerender({ value: 'foo' })
+      expect(result.all[0]).not.toBe(result.all[1])
+      expect(result.all.length).toBe(2)
+    })
   })
 })

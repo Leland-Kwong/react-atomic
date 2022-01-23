@@ -16,6 +16,8 @@ function shallowCompare(cache: any, value: any) {
           return true
         }
       }
+
+      return false
     }
   }
 
