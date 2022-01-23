@@ -11,15 +11,23 @@ import {
   AtomRoot
 } from '.'
 
-type State = string
+type State = { text: string }
+type State2 = string
 
 const identity = (d: any) => d
-const setTestState = (_: State, newText: string) => newText
+const setTestState = (s: State, text: string) => ({
+  ...s,
+  text
+})
+const setTestState2 = (_: State2, newText: string) =>
+  newText
 const ref = atomRef<State>({
   key: 'test',
-  defaultState: 'foo'
+  defaultState: {
+    text: 'foo'
+  }
 })
-const ref2 = atomRef<State>({
+const ref2 = atomRef<State2>({
   key: 'test2',
   defaultState: 'foo2'
 })
@@ -29,7 +37,7 @@ describe('react-atomic', () => {
     const wrapper = ({ children }: { children: any }) => (
       <AtomRoot>{children}</AtomRoot>
     )
-    const selector = (d: string) => d.length
+    const selector = (d: State) => d.text.length
     const { result } = renderHook(
       () => useReadAtom(ref, selector),
       { wrapper }
@@ -61,20 +69,22 @@ describe('react-atomic', () => {
     )
 
     await act(async () => {
-      await result.current.sendAtom2(setTestState, 'bar2')
+      await result.current.sendAtom2(setTestState2, 'bar2')
     })
     await act(async () => {
       await result.current.sendAtom(setTestState, 'baz')
     })
 
     expect(mockSelector.mock.calls).toEqual([
-      ['foo'],
-      ['foo'],
-      ['baz'],
-      ['baz']
+      [{ text: 'foo' }],
+      [{ text: 'foo' }],
+      [{ text: 'baz' }],
+      [{ text: 'baz' }]
     ])
     expect(result.current.readValue2).toBe('bar2')
-    expect(result.current.readValue).toBe('baz')
+    expect(result.current.readValue).toEqual({
+      text: 'baz'
+    })
   })
 
   test('useResetAtom', async () => {
@@ -107,12 +117,12 @@ describe('react-atomic', () => {
     })
 
     expect(mockSelector.mock.calls).toEqual([
-      ['foo'],
-      ['bar'],
-      ['bar'],
-      ['foo'],
-      ['foo']
+      [{ text: 'foo' }],
+      [{ text: 'bar' }],
+      [{ text: 'bar' }],
+      [{ text: 'foo' }],
+      [{ text: 'foo' }]
     ])
-    expect(result.current.readValue).toBe('foo')
+    expect(result.current.readValue).toBe(ref.defaultState)
   })
 })
