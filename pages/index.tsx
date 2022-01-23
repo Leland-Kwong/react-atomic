@@ -9,7 +9,7 @@ import {
   useReadAtom,
   useSendAtom,
   AtomRoot
-} from '../src/atomic-state'
+} from '../src/retomic'
 
 type $Hello = {
   message: string
@@ -24,8 +24,9 @@ const helloRef = atomRef<$Hello>({
   }
 })
 
-// IMPORTANT: using this function enables typescript to check for
-// extraneous properties being merged in
+// IMPORTANT: a benefit of using this function is it allows
+// typescript to check for extraneous properties being
+// merged in
 function update<T>(baseProps: T, newProps: Partial<T>): T {
   return { ...baseProps, ...newProps }
 }
@@ -123,8 +124,7 @@ const Home: NextPage = () => {
     () =>
       dynamic(
         async () =>
-          (await import('../src/atomic-state'))
-            .AtomDevTools,
+          (await import('../src/retomic')).AtomDevTools,
         { ssr: false }
       ),
     []
