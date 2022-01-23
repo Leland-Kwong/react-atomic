@@ -8,7 +8,7 @@ import { RootContext } from './constants'
 import { getState, setState } from './db'
 import { useLifeCycle } from './lifecycle'
 import { mutable } from './mutable'
-import type { AtomRef, WatcherFn, Db } from './types'
+import type { AtomRef, WatcherFn } from './types'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -40,6 +40,7 @@ function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
 }
 
 export type { AtomRef } from './types'
+export { useIsNew } from './utils'
 export { AtomDevTools } from './AtomDevTools'
 export { AtomRoot } from './AtomRoot'
 
@@ -72,7 +73,6 @@ export function useReadAtom<T, SelectorValue = T>(
     selector(defaultTo(defaultState, initialStateSlice))
   )
 
-  useLifeCycle(rootDb, atomRef)
   useEffect(() => {
     const watcherFn: WatcherFn = ({ newState }) => {
       const stateSlice = newState[key]
@@ -97,6 +97,7 @@ export function useReadAtom<T, SelectorValue = T>(
     defaultState,
     atomRef
   ])
+  useLifeCycle(rootDb, atomRef)
 
   return hookState
 }
