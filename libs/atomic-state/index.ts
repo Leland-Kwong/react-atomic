@@ -44,33 +44,6 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
   )
 }
 
-function onHookMount<T>(db: Db<T>, atomRef: AtomRef<T>) {
-  db.activeRefKeys.add(atomRef.key)
-
-  return db.subscriptions.emit($$lifeCycleChannel, {
-    type: LIFECYCLE_MOUNT,
-    key: atomRef.key
-  })
-}
-
-async function onHookUnmount<T>(
-  db: Db<T>,
-  atomRef: AtomRef<T>
-) {
-  const isAtomActive =
-    db.subscriptions.listenerCount(atomRef.key) > 0
-
-  if (!isAtomActive) {
-    db.activeRefKeys.delete(atomRef.key)
-    await cleanupRef(db, atomRef)
-  }
-
-  await db.subscriptions.emit($$lifeCycleChannel, {
-    type: LIFECYCLE_UNMOUNT,
-    key: atomRef.key
-  })
-}
-
 function resetAtom<T>(_: T, defaultState: T) {
   return defaultState
 }
@@ -118,6 +91,51 @@ export function atomRef<T>({
   return ref
 }
 
+function useLifeCycleEvents(
+  db: Db<any>,
+  atomRef: AtomRef<any>
+) {
+  useEffect(() => {
+    const asyncMountEvent = db.subscriptions.emit(
+      $$lifeCycleChannel,
+      {
+        type: LIFECYCLE_MOUNT,
+        key: atomRef.key
+      }
+    )
+
+    return () => {
+      asyncMountEvent.then(() => {
+        db.subscriptions.emit($$lifeCycleChannel, {
+          type: LIFECYCLE_UNMOUNT,
+          key: atomRef.key
+        })
+      })
+    }
+  }, [db, atomRef])
+}
+
+function useLifeCycle(db: Db<any>, atomRef: AtomRef<any>) {
+  const handleAtomLifeCycleState = () => {
+    db.activeRefKeys.add(atomRef.key)
+
+    return () => {
+      const shouldCleanupAtom =
+        db.subscriptions.listenerCount(atomRef.key) === 0
+
+      if (!shouldCleanupAtom) {
+        return
+      }
+
+      db.activeRefKeys.delete(atomRef.key)
+      cleanupRef(db, atomRef)
+    }
+  }
+
+  useLifeCycleEvents(db, atomRef)
+  useEffect(handleAtomLifeCycleState, [db, atomRef])
+}
+
 export function useReadAtom<T, SelectorValue = T>(
   atomRef: AtomRef<T>,
   selector: (state: T) => SelectorValue
@@ -129,6 +147,7 @@ export function useReadAtom<T, SelectorValue = T>(
     selector(defaultTo(defaultState, initialStateSlice))
   )
 
+  useLifeCycle(rootDb, atomRef)
   useEffect(() => {
     const watcherFn: WatcherFn = ({ newState }) => {
       const stateSlice = newState[key]
@@ -144,18 +163,7 @@ export function useReadAtom<T, SelectorValue = T>(
       setHookState(nextValue)
     }
 
-    const unsubscribe = rootDb.subscriptions.on(
-      key,
-      watcherFn
-    )
-    const asyncMountEvent = onHookMount(rootDb, atomRef)
-
-    return () => {
-      unsubscribe()
-      asyncMountEvent.then(() => {
-        onHookUnmount(rootDb, atomRef)
-      })
-    }
+    return rootDb.subscriptions.on(key, watcherFn)
   }, [
     rootDb,
     key,
@@ -172,16 +180,7 @@ export function useSendAtom<T>(atomRef: AtomRef<T>) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
 
-  useEffect(() => {
-    const asyncMountEvent = onHookMount(rootDb, atomRef)
-
-    return () => {
-      asyncMountEvent.then(() => {
-        onHookUnmount(rootDb, atomRef)
-      })
-    }
-  }, [rootDb, atomRef])
-
+  useLifeCycle(rootDb, atomRef)
   return useMemo(
     () =>
       <Payload>(
