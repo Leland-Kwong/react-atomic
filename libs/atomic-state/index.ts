@@ -6,9 +6,11 @@ import {
 } from 'react'
 import {
   RootContext,
-  $$internal,
-  $$lifeCycleChannel
+  $$lifeCycleChannel,
+  LIFECYCLE_MOUNT,
+  LIFECYCLE_UNMOUNT
 } from './constants'
+import { getState, setState } from './db'
 import type { AtomRef, WatcherFn, Db } from './types'
 
 const mutable = {
@@ -23,80 +25,50 @@ function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
 
-function setState<T>(
-  db: Db<T>,
-  newState: T,
-  atomRef: AtomRef<T>,
-  mutationFn: Function,
-  mutationPayload: any
-) {
-  const oldState = db.state
-  const eventData = {
-    oldState,
-    newState,
-    atomRef,
-    mutationFn,
-    mutationPayload,
-    db
-  }
-
-  db.state = newState
-
-  return Promise.all([
-    db.subscriptions.emit(atomRef.key, eventData),
-    db.subscriptions.emit($$internal, eventData)
-  ])
-}
-
-function getState<T>(db: Db<T>) {
-  return db.state
-}
-
 function $$resetInactiveAtom<T>(_: T, value: T) {
   return value
 }
 
-function addActiveHook<T>(db: Db<T>, atomRef: AtomRef<T>) {
-  const hookCount = db.activeHooks.get(atomRef.key) || 0
-  const newHookCount = hookCount + 1
-  db.activeHooks.set(atomRef.key, newHookCount)
-  db.subscriptions.emit($$lifeCycleChannel, {
-    type: 'mount',
-    key: atomRef.key,
-    hookCount: db.activeHooks
+function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
+  mutable.atomRefsByKey.delete(atomRef.key)
+  // remove the state key since the atom is inactive now
+  const { [atomRef.key]: _, ...newStateWithoutRef } =
+    getState(db)
+
+  return setState(
+    db,
+    newStateWithoutRef,
+    atomRef,
+    $$resetInactiveAtom,
+    atomRef.defaultState
+  )
+}
+
+function onHookMount<T>(db: Db<T>, atomRef: AtomRef<T>) {
+  db.activeRefKeys.add(atomRef.key)
+
+  return db.subscriptions.emit($$lifeCycleChannel, {
+    type: LIFECYCLE_MOUNT,
+    key: atomRef.key
   })
 }
 
-async function removeActiveHook<T>(
+async function onHookUnmount<T>(
   db: Db<T>,
   atomRef: AtomRef<T>
 ) {
-  const hookCount = db.activeHooks.get(atomRef.key) || 0
-  const newHookCount = Math.max(0, hookCount - 1)
+  const isAtomActive =
+    db.subscriptions.listenerCount(atomRef.key) > 0
 
-  db.activeHooks.set(atomRef.key, newHookCount)
-  await db.subscriptions.emit($$lifeCycleChannel, {
-    type: 'unmount',
-    key: atomRef.key,
-    hookCount: db.activeHooks
-  })
-
-  const isAtomActive = newHookCount > 0
   if (!isAtomActive) {
-    mutable.atomRefsByKey.delete(atomRef.key)
-    db.activeHooks.delete(atomRef.key)
-    // remove the state key since the atom is inactive now
-    const { [atomRef.key]: _, ...newStateWithoutRef } =
-      getState(db)
-
-    return setState(
-      db,
-      newStateWithoutRef,
-      atomRef,
-      $$resetInactiveAtom,
-      atomRef.defaultState
-    )
+    db.activeRefKeys.delete(atomRef.key)
+    await cleanupRef(db, atomRef)
   }
+
+  await db.subscriptions.emit($$lifeCycleChannel, {
+    type: LIFECYCLE_UNMOUNT,
+    key: atomRef.key
+  })
 }
 
 function resetAtom<T>(_: T, defaultState: T) {
@@ -172,12 +144,16 @@ export function useReadAtom<T, SelectorValue = T>(
       setHookState(nextValue)
     }
 
-    addActiveHook(rootDb, atomRef)
-    rootDb.subscriptions.on(key, watcherFn)
+    const unsubscribe = rootDb.subscriptions.on(
+      key,
+      watcherFn
+    )
+    const asyncMountEvent = onHookMount(rootDb, atomRef)
 
     return () => {
-      removeActiveHook(rootDb, atomRef).then(() => {
-        rootDb.subscriptions.off(key, watcherFn)
+      unsubscribe()
+      asyncMountEvent.then(() => {
+        onHookUnmount(rootDb, atomRef)
       })
     }
   }, [
@@ -197,10 +173,12 @@ export function useSendAtom<T>(atomRef: AtomRef<T>) {
   const rootDb = useContext(RootContext)
 
   useEffect(() => {
-    addActiveHook(rootDb, atomRef)
+    const asyncMountEvent = onHookMount(rootDb, atomRef)
 
     return () => {
-      removeActiveHook(rootDb, atomRef)
+      asyncMountEvent.then(() => {
+        onHookUnmount(rootDb, atomRef)
+      })
     }
   }, [rootDb, atomRef])
 
@@ -245,9 +223,8 @@ export function useSendAtom<T>(atomRef: AtomRef<T>) {
 export function useResetAtom<T>(atomRef: AtomRef<T>) {
   const mutate = useSendAtom(atomRef)
 
-  return useMemo(() => {
-    return () => {
-      return mutate(resetAtom, atomRef.defaultState)
-    }
-  }, [mutate, atomRef.defaultState])
+  return useMemo(
+    () => () => mutate(resetAtom, atomRef.defaultState),
+    [mutate, atomRef.defaultState]
+  )
 }

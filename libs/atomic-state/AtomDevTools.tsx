@@ -1,5 +1,4 @@
-import React from 'react'
-import {
+import React, {
   useContext,
   useEffect,
   useMemo,
@@ -9,11 +8,13 @@ import {
   noop,
   RootContext,
   $$internal,
-  $$lifeCycleChannel
+  $$lifeCycleChannel,
+  LIFECYCLE_MOUNT
 } from './constants'
 import {
   AtomObserverProps,
-  DevToolsLogEntry
+  DevToolsLogEntry,
+  LifeCycleEventData
 } from './types'
 
 function AtomObserver({
@@ -23,20 +24,40 @@ function AtomObserver({
   const rootDb = useContext(RootContext)
 
   useEffect(() => {
-    rootDb.subscriptions.on($$internal, onChange)
-    rootDb.subscriptions.on($$lifeCycleChannel, onLifeCycle)
-    onLifeCycle({
-      type: 'mount',
-      key: $$lifeCycleChannel,
-      hookCount: rootDb.activeHooks
+    const onLifeCycleWrapper = (
+      data: LifeCycleEventData
+    ) => {
+      const refKeys = Array.from(
+        rootDb.activeRefKeys.values()
+      )
+      const activeHooks = Object.fromEntries(
+        refKeys.map((key) => [
+          key,
+          rootDb.subscriptions.listenerCount(key)
+        ])
+      )
+
+      onLifeCycle({
+        ...data,
+        activeHooks
+      })
+    }
+
+    const subscriptions = [
+      rootDb.subscriptions.on($$internal, onChange),
+      rootDb.subscriptions.on(
+        $$lifeCycleChannel,
+        onLifeCycleWrapper
+      )
+    ]
+
+    rootDb.subscriptions.emit($$lifeCycleChannel, {
+      type: LIFECYCLE_MOUNT,
+      key: $$lifeCycleChannel
     })
 
     return () => {
-      rootDb.subscriptions.off($$internal, onChange)
-      rootDb.subscriptions.off(
-        $$lifeCycleChannel,
-        onLifeCycle
-      )
+      subscriptions.forEach((unsubscribe) => unsubscribe())
     }
   }, [onChange, onLifeCycle, rootDb])
 
@@ -81,11 +102,9 @@ export function AtomDevTools({ logSize = 50 }) {
           })
         },
         onLifeCycle: (data) => {
-          const { hookCount } = data
+          const { activeHooks } = data
 
-          setHookInfo(() =>
-            Object.fromEntries(hookCount.entries())
-          )
+          setHookInfo(() => activeHooks)
         }
       }
     }, [addLogEntry])

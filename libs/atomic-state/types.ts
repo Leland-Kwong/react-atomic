@@ -2,6 +2,15 @@ import Emittery from 'emittery'
 
 import { $$internal, $$lifeCycleChannel } from './constants'
 
+type Subscriptions<T> = Emittery<
+  {
+    [key: AtomRef<T>['key']]: WatcherEventData
+    [$$internal]: WatcherEventData
+  } & {
+    [$$lifeCycleChannel]: LifeCycleEventData
+  }
+>
+
 export interface AtomRef<T> {
   key: string
   defaultState: T
@@ -13,24 +22,20 @@ export interface DbState {
 
 export interface Db<T> {
   state: Readonly<DbState>
-  subscriptions: Emittery<
-    {
-      [key: AtomRef<T>['key']]: WatcherEventData
-      [$$internal]: WatcherEventData
-    } & {
-      [$$lifeCycleChannel]: LifeCycleEventData
-    }
-  >
-  activeHooks: Map<AtomRef<T>['key'], number>
+  subscriptions: Subscriptions<T>
+  activeRefKeys: Set<AtomRef<T>['key']>
 }
 
-interface LifeCycleEventData {
+export interface LifeCycleEventData {
   type: string
   key: AtomRef<any>['key']
-  hookCount: Db<any>['activeHooks']
 }
 
-export type LifecycleFn = (data: LifeCycleEventData) => void
+export type LifecycleFn = (
+  data: LifeCycleEventData & {
+    activeHooks: { [key: string]: number }
+  }
+) => void
 
 interface WatcherEventData {
   oldState: DbState
