@@ -14,6 +14,14 @@ import {
 } from './constants'
 import type { AtomRef, WatcherFn, Db } from './types'
 
+const mutable = {
+  duplicaKeyCount: 0,
+  atomRefsByKey: new Map<
+    AtomRef<any>['key'],
+    AtomRef<any>
+  >()
+}
+
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
@@ -78,6 +86,7 @@ async function removeActiveHook<T>(
 
   const isAtomActive = newHookCount > 0
   if (!isAtomActive) {
+    mutable.atomRefsByKey.delete(atomRef.key)
     db.activeHooks.delete(atomRef.key)
     // remove the state key since the atom is inactive now
     const { [atomRef.key]: _, ...newStateWithoutRef } =
@@ -97,6 +106,27 @@ function resetAtom<T>(_: T, defaultState: T) {
   return defaultState
 }
 
+function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
+  const isDuplicateKey = mutable.atomRefsByKey.has(key)
+
+  if (isDuplicateKey) {
+    const duplicateKeyPrefix =
+      process.env.NODE_ENV === 'development'
+        ? '/@atomDuplicate'
+        : ''
+    const newKey = `${key}${duplicateKeyPrefix}/${mutable.duplicaKeyCount}`
+
+    mutable.duplicaKeyCount += 1
+    console.warn(
+      `Warning: duplicate atomRef key \`${key}\` detected. As a safety precaution a new key, \`${newKey}\`, was automatically generated.`
+    )
+
+    return newKey
+  }
+
+  return key
+}
+
 export type { AtomRef } from './types'
 export { AtomDevTools } from './AtomDevTools'
 export { AtomRoot } from './AtomRoot'
@@ -108,10 +138,15 @@ export function atomRef<T>({
   key: AtomRef<T>['key']
   defaultState: AtomRef<T>['defaultState']
 }): Readonly<AtomRef<T>> {
-  return {
-    key,
+  const actualKey = checkDuplicateAtomKey(key)
+  const ref = {
+    key: actualKey,
     defaultState
   }
+
+  mutable.atomRefsByKey.set(actualKey, ref)
+
+  return ref
 }
 
 export function useReadAtom<T, SelectorValue = T>(
