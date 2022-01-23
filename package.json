@@ -1,7 +1,11 @@
 {
-  "name": "react-atomic",
+  "name": "retomic",
   "version": "0.3",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Leland-Kwong/retomic.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
