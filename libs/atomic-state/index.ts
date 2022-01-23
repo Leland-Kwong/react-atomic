@@ -4,46 +4,18 @@ import {
   useMemo,
   useState
 } from 'react'
-import {
-  RootContext,
-  $$lifeCycleChannel,
-  LIFECYCLE_MOUNT,
-  LIFECYCLE_UNMOUNT
-} from './constants'
+import { RootContext } from './constants'
 import { getState, setState } from './db'
+import { useLifeCycle } from './lifecycle'
+import { mutable } from './mutable'
 import type { AtomRef, WatcherFn, Db } from './types'
-
-const mutable = {
-  duplicaKeyCount: 0,
-  atomRefsByKey: new Map<
-    AtomRef<any>['key'],
-    AtomRef<any>
-  >()
-}
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
 }
 
-function $$removeInactiveKey() {}
-
 function $$resetAtom<T>(_: T, defaultState: T) {
   return defaultState
-}
-
-function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
-  mutable.atomRefsByKey.delete(atomRef.key)
-  // remove the state key since is inactive
-  const { [atomRef.key]: _, ...newStateWithoutRef } =
-    getState(db)
-
-  return setState(
-    db,
-    newStateWithoutRef,
-    atomRef,
-    $$removeInactiveKey,
-    undefined
-  )
 }
 
 function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
@@ -65,58 +37,6 @@ function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
   }
 
   return key
-}
-
-function useLifeCycleEvents(
-  db: Db<any>,
-  atomRef: AtomRef<any>
-) {
-  useEffect(() => {
-    const hasLifeCycleListeners =
-      db.subscriptions.listenerCount($$lifeCycleChannel) > 0
-
-    if (!hasLifeCycleListeners) {
-      return
-    }
-
-    const asyncMountEvent = db.subscriptions.emit(
-      $$lifeCycleChannel,
-      {
-        type: LIFECYCLE_MOUNT,
-        key: atomRef.key
-      }
-    )
-
-    return () => {
-      asyncMountEvent.then(() => {
-        db.subscriptions.emit($$lifeCycleChannel, {
-          type: LIFECYCLE_UNMOUNT,
-          key: atomRef.key
-        })
-      })
-    }
-  }, [db, atomRef])
-}
-
-function useLifeCycle(db: Db<any>, atomRef: AtomRef<any>) {
-  const handleAtomLifeCycleState = () => {
-    db.activeRefKeys.add(atomRef.key)
-
-    return () => {
-      const shouldCleanupAtom =
-        db.subscriptions.listenerCount(atomRef.key) === 0
-
-      if (!shouldCleanupAtom) {
-        return
-      }
-
-      db.activeRefKeys.delete(atomRef.key)
-      cleanupRef(db, atomRef)
-    }
-  }
-
-  useLifeCycleEvents(db, atomRef)
-  useEffect(handleAtomLifeCycleState, [db, atomRef])
 }
 
 export type { AtomRef } from './types'
