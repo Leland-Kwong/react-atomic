@@ -11,28 +11,30 @@ import {
   AtomRoot
 } from '.'
 
+type State = string
+
+const identity = (d: any) => d
+const setTestState = (_: State, newText: string) => newText
+const ref = atomRef<State>({
+  key: 'test',
+  defaultState: 'foo'
+})
+const ref2 = atomRef<State>({
+  key: 'test2',
+  defaultState: 'foo2'
+})
+
 describe('react-atomic', () => {
-  type State = string
-
-  const ref = atomRef<State>({
-    key: 'test',
-    defaultState: 'foo'
-  })
-
-  const setTestState = (_: State, newText: string) =>
-    newText
-
   test('useReadAtom', () => {
     const wrapper = ({ children }: { children: any }) => (
       <AtomRoot>{children}</AtomRoot>
     )
-    const mockSelector = jest.fn((d) => d.length)
+    const selector = (d: string) => d.length
     const { result } = renderHook(
-      () => useReadAtom(ref, mockSelector),
+      () => useReadAtom(ref, selector),
       { wrapper }
     )
 
-    expect(mockSelector.mock.calls).toEqual([['foo']])
     expect(result.current).toBe(3)
   })
 
@@ -45,21 +47,33 @@ describe('react-atomic', () => {
       () => {
         const readValue = useReadAtom(ref, mockSelector)
         const sendAtom = useSendAtom(ref)
+        const readValue2 = useReadAtom(ref2, identity)
+        const sendAtom2 = useSendAtom(ref2)
 
-        return { readValue, sendAtom }
+        return {
+          readValue,
+          sendAtom,
+          readValue2,
+          sendAtom2
+        }
       },
       { wrapper }
     )
 
+    await act(async () => {
+      await result.current.sendAtom2(setTestState, 'bar2')
+    })
     await act(async () => {
       await result.current.sendAtom(setTestState, 'baz')
     })
 
     expect(mockSelector.mock.calls).toEqual([
       ['foo'],
+      ['foo'],
       ['baz'],
       ['baz']
     ])
+    expect(result.current.readValue2).toBe('bar2')
     expect(result.current.readValue).toBe('baz')
   })
 
@@ -70,13 +84,17 @@ describe('react-atomic', () => {
       children: any
     }) => <AtomRoot>{children}</AtomRoot>
     const mockSelector = jest.fn((d) => d)
-    const { result, rerender } = renderHook(
+    const { result } = renderHook(
       () => {
         const readValue = useReadAtom(ref, mockSelector)
         const resetAtom = useResetAtom(ref)
         const sendAtom = useSendAtom(ref)
 
-        return { readValue, resetAtom, sendAtom }
+        return {
+          readValue,
+          resetAtom,
+          sendAtom
+        }
       },
       { wrapper: mockWrapper }
     )
@@ -88,13 +106,10 @@ describe('react-atomic', () => {
       await result.current.resetAtom()
     })
 
-    rerender()
-
     expect(mockSelector.mock.calls).toEqual([
       ['foo'],
       ['bar'],
       ['bar'],
-      ['foo'],
       ['foo'],
       ['foo']
     ])
