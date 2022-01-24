@@ -103,7 +103,6 @@ export function useRead<T, SelectorValue = T>(
 }
 
 export function useSend<T>(atomRef: AtomRef<T>) {
-  const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
 
   useLifeCycle(rootDb, atomRef)
@@ -123,6 +122,7 @@ export function useSend<T>(atomRef: AtomRef<T>) {
           )
         }
 
+        const { key, defaultState } = atomRef
         const rootState = getState(rootDb)
         const stateSlice = defaultTo(
           defaultState,
@@ -141,7 +141,7 @@ export function useSend<T>(atomRef: AtomRef<T>) {
           payload
         )
       },
-    [defaultState, rootDb, key, atomRef]
+    [rootDb, atomRef]
   )
 }
 
