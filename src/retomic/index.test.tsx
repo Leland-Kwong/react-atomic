@@ -47,6 +47,19 @@ describe('react-atomic', () => {
     expect(result.current).toBe(3)
   })
 
+  test('useRead: check for missing AtomRoot wrapping', () => {
+    const wrapper = ({ children }: { children: any }) => (
+      <div>{children}</div>
+    )
+    const selector = (d: State) => d.text.length
+    const { result } = renderHook(
+      () => useRead(ref, selector),
+      { wrapper }
+    )
+
+    expect(() => result.current).toThrow()
+  })
+
   test('useSend', async () => {
     const wrapper = ({ children }: { children: any }) => (
       <AtomRoot>{children}</AtomRoot>
@@ -86,6 +99,18 @@ describe('react-atomic', () => {
     expect(result.current.readValue).toEqual({
       text: 'baz'
     })
+  })
+
+  test('useSend: check for missing AtomRoot wrapping', () => {
+    const wrapper = ({ children }: { children: any }) => (
+      <div>{children}</div>
+    )
+    const selector = (d: State) => d.text.length
+    const { result } = renderHook(() => useSend(ref), {
+      wrapper
+    })
+
+    expect(() => result.current).toThrow()
   })
 
   test('useReset', async () => {

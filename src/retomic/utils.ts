@@ -43,3 +43,7 @@ export function useIsNew<X, Y>(
     return cache.current as Y
   }
 }
+
+export function errorMsg(msg: string) {
+  return `[retomic error]: ${msg}`
+}

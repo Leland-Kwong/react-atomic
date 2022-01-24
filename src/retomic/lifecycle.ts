@@ -1,12 +1,15 @@
-import { useEffect } from 'react'
+import { useContext, useEffect } from 'react'
 import { mutable } from './mutable'
 import { getState, setState } from './db'
 import type { AtomRef, Db } from './types'
 import {
+  defaultContext,
+  RootContext,
   $$lifeCycleChannel,
   LIFECYCLE_MOUNT,
   LIFECYCLE_UNMOUNT
 } from './constants'
+import { errorMsg } from './utils'
 
 function $$removeInactiveKey() {}
 
@@ -60,6 +63,17 @@ export function useLifeCycle(
   db: Db<any>,
   atomRef: AtomRef<any>
 ) {
+  const rootDb = useContext(RootContext)
+  const hasAtomRoot = rootDb !== defaultContext
+
+  if (!hasAtomRoot) {
+    throw new Error(
+      errorMsg(
+        'Application tree must be wrapped in an `AtomRoot` component'
+      )
+    )
+  }
+
   const handleAtomLifeCycleState = () => {
     db.activeRefKeys.add(atomRef.key)
 
