@@ -7,7 +7,7 @@ import {
   atomRef,
   useIsNew,
   useRead,
-  useSendAtom,
+  useSend,
   AtomRoot
 } from '../src/retomic'
 
@@ -55,7 +55,7 @@ const tick = (time: $Clock, incrementBy: number) =>
 
 const Timer = () => {
   const count = useRead(timerRef, identity)
-  const sendTimer = useSendAtom(timerRef)
+  const sendTimer = useSend(timerRef)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -85,7 +85,7 @@ const MessageOnly = () => {
 const AtomAppDemo = () => {
   const text = useRead(helloRef, (s) => s.message)
   const showTimer = useRead(helloRef, (s) => s.showTimer)
-  const sendHello = useSendAtom(helloRef)
+  const sendHello = useSend(helloRef)
 
   return (
     <div>

@@ -7,7 +7,7 @@ import {
   atomRef,
   useRead,
   useResetAtom,
-  useSendAtom,
+  useSend,
   AtomRoot,
   useIsNew
 } from '.'
@@ -47,7 +47,7 @@ describe('react-atomic', () => {
     expect(result.current).toBe(3)
   })
 
-  test('useSendAtom', async () => {
+  test('useSend', async () => {
     const wrapper = ({ children }: { children: any }) => (
       <AtomRoot>{children}</AtomRoot>
     )
@@ -55,9 +55,9 @@ describe('react-atomic', () => {
     const { result } = renderHook(
       () => {
         const readValue = useRead(ref, mockSelector)
-        const sendAtom = useSendAtom(ref)
+        const sendAtom = useSend(ref)
         const readValue2 = useRead(ref2, identity)
-        const sendAtom2 = useSendAtom(ref2)
+        const sendAtom2 = useSend(ref2)
 
         return {
           readValue,
@@ -99,7 +99,7 @@ describe('react-atomic', () => {
       () => {
         const readValue = useRead(ref, mockSelector)
         const resetAtom = useResetAtom(ref)
-        const sendAtom = useSendAtom(ref)
+        const sendAtom = useSend(ref)
 
         return {
           readValue,

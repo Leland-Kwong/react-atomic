@@ -102,7 +102,7 @@ export function useRead<T, SelectorValue = T>(
   return hookState
 }
 
-export function useSendAtom<T>(atomRef: AtomRef<T>) {
+export function useSend<T>(atomRef: AtomRef<T>) {
   const { key, defaultState } = atomRef
   const rootDb = useContext(RootContext)
 
@@ -146,7 +146,7 @@ export function useSendAtom<T>(atomRef: AtomRef<T>) {
 }
 
 export function useResetAtom<T>(atomRef: AtomRef<T>) {
-  const mutate = useSendAtom(atomRef)
+  const mutate = useSend(atomRef)
 
   return useMemo(
     () => () => mutate($$resetAtom, atomRef.defaultState),

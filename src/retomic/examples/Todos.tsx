@@ -2,7 +2,7 @@ import React from 'react'
 import {
   atomRef,
   useRead,
-  useSendAtom,
+  useSend,
   AtomRoot
 } from '../core'
 
@@ -54,7 +54,7 @@ function TodosList() {
 }
 
 function AddTodo() {
-  const sendTodos = useSendAtom(todosRef)
+  const sendTodos = useSend(todosRef)
 
   return (
     <button
