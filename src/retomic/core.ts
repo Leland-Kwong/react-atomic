@@ -93,7 +93,7 @@ export function useRead<T, SelectorValue = T>(
 
     return rootDb.subscriptions.on(key, watcherFn)
   }, [rootDb, key, selector, defaultState, atomRef])
-  useLifeCycle(rootDb, atomRef)
+  useLifeCycle(atomRef, 'read')
 
   return hookState
 }
@@ -101,7 +101,7 @@ export function useRead<T, SelectorValue = T>(
 export function useSend<T>(atomRef: AtomRef<T>) {
   const rootDb = useContext(RootContext)
 
-  useLifeCycle(rootDb, atomRef)
+  useLifeCycle(atomRef, 'send')
   return useMemo(
     () =>
       <Payload>(

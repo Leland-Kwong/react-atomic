@@ -9,7 +9,7 @@ export function makeDb<T>(initialState: T): Db<T> {
   return {
     state: initialState,
     subscriptions,
-    activeRefKeys: new Set()
+    activeHooks: {}
   }
 }
 

@@ -1,7 +1,11 @@
-import { useContext, useEffect } from 'react'
+import { useContext, useEffect, useMemo } from 'react'
 import { mutable } from './mutable'
 import { getState, setState } from './db'
-import type { AtomRef, Db } from './types'
+import type {
+  AtomRef,
+  Db,
+  LifeCycleEventData
+} from './types'
 import {
   defaultContext,
   RootContext,
@@ -11,7 +15,18 @@ import {
 } from './constants'
 import { errorMsg } from './utils'
 
-function $$removeInactiveKey() {}
+const onLifeCycleDefaults = {
+  predicate<T>(
+    { key }: LifeCycleEventData,
+    atomRef: AtomRef<T>
+  ) {
+    return key === atomRef.key
+  }
+}
+
+function numListeners<T>(db: Db<T>, key: string) {
+  return db.subscriptions.listenerCount(key)
+}
 
 function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
   const { key, resetOnInactive } = atomRef
@@ -22,8 +37,15 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
     return
   }
 
-  // remove the state key since is inactive
-  const { [key]: _, ...newStateWithoutRef } = getState(db)
+  const {
+    // omit inactive state key
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    [key]: _omitted,
+    ...newStateWithoutRef
+  } = getState(db)
+
+  // dummy named function for debugging context
+  function $$removeInactiveKey() {}
 
   return setState(
     db,
@@ -34,39 +56,38 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
   )
 }
 
-function numListeners<T>(db: Db<T>, key: string) {
-  return db.subscriptions.listenerCount(key)
+function useDb() {
+  return useContext(RootContext)
 }
 
-function useLifeCycleEvents(
-  db: Db<any>,
-  atomRef: AtomRef<any>
-) {
-  useEffect(() => {
-    if (numListeners(db, $$lifeCycleChannel) > 0) {
-      db.subscriptions.emit($$lifeCycleChannel, {
-        type: LIFECYCLE_MOUNT,
-        key: atomRef.key
-      })
-    }
+function isAtomActive<T>(db: Db<T>, atomRef: AtomRef<T>) {
+  return db.activeHooks[atomRef.key] > 0
+}
 
-    return () => {
-      if (numListeners(db, $$lifeCycleChannel) > 0) {
-        db.subscriptions.emit($$lifeCycleChannel, {
-          type: LIFECYCLE_UNMOUNT,
-          key: atomRef.key
-        })
-      }
-    }
-  }, [db, atomRef])
+function emitLifeCycleEvent<T>(
+  db: Db<T>,
+  atomRef: AtomRef<T>,
+  // TODO: add LIFECYCLE_STATE_CHANGE as a type as well
+  type: typeof LIFECYCLE_MOUNT | typeof LIFECYCLE_UNMOUNT
+) {
+  if (numListeners(db, $$lifeCycleChannel) === 0) {
+    return
+  }
+
+  db.subscriptions.emit($$lifeCycleChannel, {
+    type,
+    key: atomRef.key,
+    state: getState(db),
+    activeHooks: { ...db.activeHooks }
+  })
 }
 
 export function useLifeCycle(
-  db: Db<any>,
-  atomRef: AtomRef<any>
+  atomRef: AtomRef<any>,
+  hookType: keyof Db<any>['activeHooks']
 ) {
-  const rootDb = useContext(RootContext)
-  const hasAtomRoot = rootDb !== defaultContext
+  const db = useDb()
+  const hasAtomRoot = db !== defaultContext
 
   if (!hasAtomRoot) {
     throw new Error(
@@ -77,28 +98,60 @@ export function useLifeCycle(
   }
 
   const handleAtomLifeCycleState = () => {
-    db.activeRefKeys.add(atomRef.key)
+    db.activeHooks[atomRef.key] =
+      (db.activeHooks[atomRef.key] || 0) + 1
+    emitLifeCycleEvent(db, atomRef, LIFECYCLE_MOUNT)
 
     return () => {
-      const shouldCleanupAtom =
-        db.subscriptions.listenerCount(atomRef.key) === 0
+      db.activeHooks[atomRef.key] -= 1
 
-      if (!shouldCleanupAtom) {
-        return
+      if (!isAtomActive(db, atomRef)) {
+        delete db.activeHooks[atomRef.key]
+        cleanupRef(db, atomRef)
       }
 
-      db.activeRefKeys.delete(atomRef.key)
-      cleanupRef(db, atomRef)
+      emitLifeCycleEvent(db, atomRef, LIFECYCLE_UNMOUNT)
     }
   }
 
-  useLifeCycleEvents(db, atomRef)
-  useEffect(handleAtomLifeCycleState, [db, atomRef])
+  useEffect(handleAtomLifeCycleState, [
+    db,
+    atomRef,
+    hookType
+  ])
 }
 
-/**
- * For testing purposes
- */
-export function useDb<T>(atomRef: AtomRef<T>) {
-  return useContext(RootContext)
+export function useOnLifeCycle<T>(
+  atomRef: AtomRef<T>,
+  fn: (data: {
+    type: string
+    activeHooks: Db<T>['activeHooks']
+    state: Db<T>['state']
+  }) => void,
+  predicate: (
+    data: LifeCycleEventData,
+    atomRef: AtomRef<T>
+  ) => boolean = onLifeCycleDefaults.predicate
+) {
+  const db = useDb()
+  const unsubscribe = useMemo(() => {
+    return db.subscriptions.on(
+      $$lifeCycleChannel,
+      (data) => {
+        const { type, state, activeHooks } = data
+
+        if (!predicate(data, atomRef)) {
+          return
+        }
+
+        fn({
+          type,
+          activeHooks,
+          state
+        })
+      }
+    )
+  }, [db, fn, predicate, atomRef])
+
+  return unsubscribe
 }

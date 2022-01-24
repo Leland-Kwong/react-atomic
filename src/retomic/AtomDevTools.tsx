@@ -8,8 +8,7 @@ import {
   noop,
   RootContext,
   $$internal,
-  $$lifeCycleChannel,
-  LIFECYCLE_MOUNT
+  $$lifeCycleChannel
 } from './constants'
 import {
   AtomObserverProps,
@@ -27,20 +26,7 @@ function AtomObserver({
     const onLifeCycleWrapper = (
       data: LifeCycleEventData
     ) => {
-      const refKeys = Array.from(
-        rootDb.activeRefKeys.values()
-      )
-      const activeHooks = Object.fromEntries(
-        refKeys.map((key) => [
-          key,
-          rootDb.subscriptions.listenerCount(key)
-        ])
-      )
-
-      onLifeCycle({
-        ...data,
-        activeHooks
-      })
+      onLifeCycle(data)
     }
 
     const subscriptions = [
@@ -50,11 +36,6 @@ function AtomObserver({
         onLifeCycleWrapper
       )
     ]
-
-    rootDb.subscriptions.emit($$lifeCycleChannel, {
-      type: LIFECYCLE_MOUNT,
-      key: $$lifeCycleChannel
-    })
 
     return () => {
       subscriptions.forEach((unsubscribe) => unsubscribe())

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import {
   renderHook,
   act,
@@ -12,7 +12,7 @@ import {
   AtomRoot,
   useIsNew
 } from '.'
-import { useDb } from './lifecycle'
+import { useOnLifeCycle } from './lifecycle'
 
 type State = { text: string }
 type State2 = string
@@ -36,7 +36,7 @@ const ref2 = atomRef<State2>({
 })
 const atomNoAutoReset = atomRef({
   key: 'atomNoAutoReset',
-  defaultState: 0,
+  defaultState: '',
   resetOnInactive: false
 })
 
@@ -54,17 +54,30 @@ describe('react-atomic', () => {
     expect(result.current).toBe(3)
   })
 
-  test('useRead: check for missing AtomRoot wrapping', () => {
-    const wrapper = ({ children }: { children: any }) => (
-      <div>{children}</div>
-    )
-    const selector = (d: State) => d.text.length
-    const { result } = renderHook(
-      () => useRead(ref, selector),
-      { wrapper }
-    )
+  describe('check for missing AtomRoot wrapping', () => {
+    test('useRead', () => {
+      const wrapper = ({ children }: { children: any }) => (
+        <div>{children}</div>
+      )
+      const selector = (d: State) => d.text.length
+      const { result } = renderHook(
+        () => useRead(ref, selector),
+        { wrapper }
+      )
 
-    expect(() => result.current).toThrow()
+      expect(() => result.current).toThrow()
+    })
+
+    test('useSend', () => {
+      const wrapper = ({ children }: { children: any }) => (
+        <div>{children}</div>
+      )
+      const { result } = renderHook(() => useSend(ref), {
+        wrapper
+      })
+
+      expect(() => result.current).toThrow()
+    })
   })
 
   test('useSend', async () => {
@@ -102,23 +115,10 @@ describe('react-atomic', () => {
     })
   })
 
-  test('useSend: check for missing AtomRoot wrapping', () => {
-    const wrapper = ({ children }: { children: any }) => (
-      <div>{children}</div>
-    )
-    const { result } = renderHook(() => useSend(ref), {
-      wrapper
-    })
-
-    expect(() => result.current).toThrow()
-  })
-
   test('useReset', async () => {
-    const mockWrapper = ({
-      children
-    }: {
-      children: any
-    }) => <AtomRoot>{children}</AtomRoot>
+    const wrapper = ({ children }: { children: any }) => (
+      <AtomRoot>{children}</AtomRoot>
+    )
     const mockSelector = jest.fn((d) => d)
     const { result } = renderHook(
       () => {
@@ -132,7 +132,7 @@ describe('react-atomic', () => {
           sendAtom
         }
       },
-      { wrapper: mockWrapper }
+      { wrapper }
     )
 
     await act(async () => {
@@ -146,13 +146,9 @@ describe('react-atomic', () => {
   })
 
   describe('use cache', () => {
-    const mockWrapper = ({
-      value: _,
-      children
-    }: {
-      value: string
-      children?: any
-    }) => <AtomRoot>{children}</AtomRoot>
+    const wrapper = ({ children }: { children?: any }) => (
+      <AtomRoot>{children}</AtomRoot>
+    )
 
     test('primitive compare', () => {
       const { result, rerender } = renderHook(
@@ -163,7 +159,7 @@ describe('react-atomic', () => {
           return cachedFunction(props.value)
         },
         {
-          wrapper: mockWrapper,
+          wrapper,
           initialProps: { value: 'foo' }
         }
       )
@@ -181,11 +177,10 @@ describe('react-atomic', () => {
           const cachedFunction = useIsNew(
             ({ value }: { value: string }) => ({ value })
           )
-
           return cachedFunction({ value: props.value })
         },
         {
-          wrapper: mockWrapper,
+          wrapper,
           initialProps: { value: 'foo' }
         }
       )
@@ -209,7 +204,7 @@ describe('react-atomic', () => {
           return cachedFunction({ value: props.value })
         },
         {
-          wrapper: mockWrapper,
+          wrapper,
           initialProps: { value: 'foo' }
         }
       )
@@ -221,51 +216,21 @@ describe('react-atomic', () => {
   })
 
   test('properly manages listeners and state on mount/unmount', async () => {
-    const hookCountOnLifeCycle = jest.fn(
-      (_: {
-        listenerCount: number
-        stateKeyExists: boolean
-      }) => undefined
+    const onLifeCycle = jest.fn()
+    const lifeCycleWatcher = (d: any) => d
+    const wrapper = ({ children }: { children?: any }) => (
+      <AtomRoot>{children}</AtomRoot>
     )
-    const selector = jest.fn((d) => d)
-    const mockWrapper = ({
-      value: _,
-      children
-    }: {
-      value: string
-      children?: any
-    }) => <AtomRoot>{children}</AtomRoot>
     const { result } = renderHook(
       () => {
-        const res = {
-          readValue: useRead(ref2, selector),
+        useOnLifeCycle(ref2, onLifeCycle)
+
+        return {
+          readValue: useRead(ref2, lifeCycleWatcher),
           sendAtom: useSend(ref2)
         }
-        const db = useDb(ref2)
-
-        useEffect(() => {
-          hookCountOnLifeCycle({
-            listenerCount: db.subscriptions.listenerCount(
-              ref2.key
-            ),
-            stateKeyExists: ref2.key in db.state
-          })
-
-          return () => {
-            hookCountOnLifeCycle({
-              listenerCount: db.subscriptions.listenerCount(
-                ref2.key
-              ),
-              stateKeyExists: ref2.key in db.state
-            })
-          }
-        })
-
-        return res
       },
-      {
-        wrapper: mockWrapper
-      }
+      { wrapper }
     )
 
     await act(async () => {
@@ -273,70 +238,85 @@ describe('react-atomic', () => {
     })
     await cleanup()
 
-    expect(hookCountOnLifeCycle.mock.calls).toEqual([
-      [{ listenerCount: 1, stateKeyExists: false }],
-      [{ listenerCount: 1, stateKeyExists: true }],
-      [{ listenerCount: 1, stateKeyExists: true }],
-      [{ listenerCount: 0, stateKeyExists: false }]
+    expect(onLifeCycle.mock.calls).toEqual([
+      [
+        {
+          activeHooks: {
+            [ref2.key]: 1
+          },
+          type: 'mount',
+          state: {}
+        }
+      ],
+      [
+        {
+          activeHooks: {
+            [ref2.key]: 2
+          },
+          type: 'mount',
+          state: {}
+        }
+      ],
+      [
+        {
+          activeHooks: {
+            [ref2.key]: 1
+          },
+          type: 'unmount',
+          state: { [ref2.key]: 'bar' }
+        }
+      ],
+      [
+        {
+          activeHooks: {},
+          type: 'unmount',
+          state: {}
+        }
+      ]
     ])
   })
 
   test('resetOnInactive option disabled', async () => {
-    const hookCountOnLifeCycle = jest.fn(
-      (_: {
-        listenerCount: number
-        stateKeyExists: boolean
-      }) => undefined
+    const onLifeCycle = jest.fn()
+    const wrapper = ({ children }: { children?: any }) => (
+      <AtomRoot>{children}</AtomRoot>
     )
-    const mockWrapper = ({
-      value: _,
-      children
-    }: {
-      value: string
-      children?: any
-    }) => <AtomRoot>{children}</AtomRoot>
     const { result } = renderHook(
       () => {
-        const res = {
+        useOnLifeCycle(atomNoAutoReset, onLifeCycle)
+
+        return {
           sendAtom: useSend(atomNoAutoReset)
         }
-        const db = useDb(atomNoAutoReset)
-
-        useEffect(() => {
-          hookCountOnLifeCycle({
-            listenerCount: db.subscriptions.listenerCount(
-              atomNoAutoReset.key
-            ),
-            stateKeyExists: atomNoAutoReset.key in db.state
-          })
-
-          return () => {
-            hookCountOnLifeCycle({
-              listenerCount: db.subscriptions.listenerCount(
-                atomNoAutoReset.key
-              ),
-              stateKeyExists:
-                atomNoAutoReset.key in db.state
-            })
-          }
-        })
-
-        return res
       },
-      {
-        wrapper: mockWrapper
-      }
+      { wrapper }
     )
 
     await act(async () => {
-      const setTo = (_: number, newNum: number) => newNum
-      await result.current.sendAtom(setTo, 1)
+      const setTo = (_: string, newNum: string) => newNum
+      await result.current.sendAtom(setTo, '$$noReset')
     })
     await cleanup()
 
-    expect(hookCountOnLifeCycle.mock.calls).toEqual([
-      [{ listenerCount: 0, stateKeyExists: false }],
-      [{ listenerCount: 0, stateKeyExists: true }]
+    expect(onLifeCycle.mock.calls).toEqual([
+      [
+        {
+          activeHooks: {
+            [atomNoAutoReset.key]: 1
+          },
+          type: 'mount',
+          state: {}
+        }
+      ],
+      [
+        {
+          activeHooks: {},
+          type: 'unmount',
+          state: {
+            [atomNoAutoReset.key]: '$$noReset'
+          }
+        }
+      ]
     ])
   })
 })

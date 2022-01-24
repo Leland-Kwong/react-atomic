@@ -28,19 +28,20 @@ export interface DbState {
 export interface Db<T> {
   state: Readonly<DbState>
   subscriptions: Subscriptions<T>
-  activeRefKeys: Set<AtomRef<T>['key']>
+  // hook counts
+  activeHooks: {
+    [atomRefKey: string]: number
+  }
 }
 
 export interface LifeCycleEventData {
   type: string
   key: AtomRef<any>['key']
+  state: Db<any>['state']
+  activeHooks: Readonly<Db<any>['activeHooks']>
 }
 
-export type LifecycleFn = (
-  data: LifeCycleEventData & {
-    activeHooks?: { [key: string]: number }
-  }
-) => void
+export type LifecycleFn = (data: LifeCycleEventData) => void
 
 interface WatcherEventData {
   oldState: DbState
