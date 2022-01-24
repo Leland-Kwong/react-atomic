@@ -10,7 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": false,
     "esModuleInterop": true,
-    "module": "amd",
+    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": false,
     "isolatedModules": false,
