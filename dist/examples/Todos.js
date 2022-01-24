@@ -1,3 +1,4 @@
+"use strict";
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -18,9 +19,14 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     }
     return to.concat(ar || Array.prototype.slice.call(from));
 };
-import React from 'react';
-import { atomRef, useRead, useSend, AtomRoot } from '../core';
-var todosRef = atomRef({
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Todos = void 0;
+var react_1 = __importDefault(require("react"));
+var core_1 = require("../core");
+var todosRef = (0, core_1.atomRef)({
     key: 'todos',
     defaultState: {
         items: [
@@ -34,21 +40,21 @@ var todosRef = atomRef({
 });
 var addTodo = function (s, newTodo) { return (__assign(__assign({}, s), { items: __spreadArray(__spreadArray([], s.items, true), [newTodo], false) })); };
 function TodosList() {
-    var todos = useRead(todosRef, function (d) { return d.items; });
-    return (React.createElement("div", { style: {
+    var todos = (0, core_1.useRead)(todosRef, function (d) { return d.items; });
+    return (react_1.default.createElement("div", { style: {
             height: 400,
             overflow: 'auto'
         } }, todos.map(function (_a) {
         var id = _a.id, text = _a.text, done = _a.done;
-        return (React.createElement("div", { key: id },
-            React.createElement("input", { type: "checkbox", checked: done, readOnly: true }),
+        return (react_1.default.createElement("div", { key: id },
+            react_1.default.createElement("input", { type: "checkbox", checked: done, readOnly: true }),
             "text: ",
             text));
     })));
 }
 function AddTodo() {
-    var sendTodos = useSend(todosRef);
-    return (React.createElement("button", { type: "button", onClick: function () {
+    var sendTodos = (0, core_1.useSend)(todosRef);
+    return (react_1.default.createElement("button", { type: "button", onClick: function () {
             sendTodos(addTodo, {
                 text: 'buy something',
                 done: false,
@@ -56,10 +62,11 @@ function AddTodo() {
             });
         } }, "add todo"));
 }
-export function Todos() {
-    return (React.createElement("div", null,
-        React.createElement("h1", null, "Retomic Example"),
-        React.createElement(AtomRoot, null,
-            React.createElement(TodosList, null),
-            React.createElement(AddTodo, null))));
+function Todos() {
+    return (react_1.default.createElement("div", null,
+        react_1.default.createElement("h1", null, "Retomic Example"),
+        react_1.default.createElement(core_1.AtomRoot, null,
+            react_1.default.createElement(TodosList, null),
+            react_1.default.createElement(AddTodo, null))));
 }
+exports.Todos = Todos;
