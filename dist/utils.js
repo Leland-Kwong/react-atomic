@@ -1,7 +1,7 @@
 define(["require", "exports", "react"], function (require, exports, react_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.useIsNew = void 0;
+    exports.errorMsg = exports.useIsNew = void 0;
     function shallowCompare(cache, value) {
         var maybeNewValue = value !== cache;
         if (maybeNewValue) {
@@ -35,4 +35,8 @@ define(["require", "exports", "react"], function (require, exports, react_1) {
         };
     }
     exports.useIsNew = useIsNew;
+    function errorMsg(msg) {
+        return "[retomic error]: ".concat(msg);
+    }
+    exports.errorMsg = errorMsg;
 });

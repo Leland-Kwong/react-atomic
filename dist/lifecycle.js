@@ -9,7 +9,7 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
-define(["require", "exports", "react", "./mutable", "./db", "./constants"], function (require, exports, react_1, mutable_1, db_1, constants_1) {
+define(["require", "exports", "react", "./mutable", "./db", "./constants", "./utils"], function (require, exports, react_1, mutable_1, db_1, constants_1, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.useLifeCycle = void 0;
@@ -41,6 +41,11 @@ define(["require", "exports", "react", "./mutable", "./db", "./constants"], func
         }, [db, atomRef]);
     }
     function useLifeCycle(db, atomRef) {
+        var rootDb = (0, react_1.useContext)(constants_1.RootContext);
+        var hasAtomRoot = rootDb !== constants_1.defaultContext;
+        if (!hasAtomRoot) {
+            throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `AtomRoot` component'));
+        }
         var handleAtomLifeCycleState = function () {
             db.activeRefKeys.add(atomRef.key);
             return function () {
