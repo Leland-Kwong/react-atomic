@@ -9,56 +9,55 @@ var __rest = (this && this.__rest) || function (s, e) {
         }
     return t;
 };
-define(["require", "exports", "react", "./mutable", "./db", "./constants", "./utils"], function (require, exports, react_1, mutable_1, db_1, constants_1, utils_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.useLifeCycle = void 0;
-    function $$removeInactiveKey() { }
-    function cleanupRef(db, atomRef) {
-        mutable_1.mutable.atomRefsByKey.delete(atomRef.key);
-        // remove the state key since is inactive
-        var _a = (0, db_1.getState)(db), _b = atomRef.key, _ = _a[_b], newStateWithoutRef = __rest(_a, [typeof _b === "symbol" ? _b : _b + ""]);
-        return (0, db_1.setState)(db, newStateWithoutRef, atomRef, $$removeInactiveKey, undefined);
+import { useContext, useEffect } from 'react';
+import { mutable } from './mutable';
+import { getState, setState } from './db';
+import { defaultContext, RootContext, $$lifeCycleChannel, LIFECYCLE_MOUNT, LIFECYCLE_UNMOUNT } from './constants';
+import { errorMsg } from './utils';
+function $$removeInactiveKey() { }
+function cleanupRef(db, atomRef) {
+    mutable.atomRefsByKey.delete(atomRef.key);
+    // remove the state key since is inactive
+    var _a = getState(db), _b = atomRef.key, _ = _a[_b], newStateWithoutRef = __rest(_a, [typeof _b === "symbol" ? _b : _b + ""]);
+    return setState(db, newStateWithoutRef, atomRef, $$removeInactiveKey, undefined);
+}
+function useLifeCycleEvents(db, atomRef) {
+    useEffect(function () {
+        var hasLifeCycleListeners = db.subscriptions.listenerCount($$lifeCycleChannel) > 0;
+        if (!hasLifeCycleListeners) {
+            return;
+        }
+        var asyncMountEvent = db.subscriptions.emit($$lifeCycleChannel, {
+            type: LIFECYCLE_MOUNT,
+            key: atomRef.key
+        });
+        return function () {
+            asyncMountEvent.then(function () {
+                db.subscriptions.emit($$lifeCycleChannel, {
+                    type: LIFECYCLE_UNMOUNT,
+                    key: atomRef.key
+                });
+            });
+        };
+    }, [db, atomRef]);
+}
+export function useLifeCycle(db, atomRef) {
+    var rootDb = useContext(RootContext);
+    var hasAtomRoot = rootDb !== defaultContext;
+    if (!hasAtomRoot) {
+        throw new Error(errorMsg('Application tree must be wrapped in an `AtomRoot` component'));
     }
-    function useLifeCycleEvents(db, atomRef) {
-        (0, react_1.useEffect)(function () {
-            var hasLifeCycleListeners = db.subscriptions.listenerCount(constants_1.$$lifeCycleChannel) > 0;
-            if (!hasLifeCycleListeners) {
+    var handleAtomLifeCycleState = function () {
+        db.activeRefKeys.add(atomRef.key);
+        return function () {
+            var shouldCleanupAtom = db.subscriptions.listenerCount(atomRef.key) === 0;
+            if (!shouldCleanupAtom) {
                 return;
             }
-            var asyncMountEvent = db.subscriptions.emit(constants_1.$$lifeCycleChannel, {
-                type: constants_1.LIFECYCLE_MOUNT,
-                key: atomRef.key
-            });
-            return function () {
-                asyncMountEvent.then(function () {
-                    db.subscriptions.emit(constants_1.$$lifeCycleChannel, {
-                        type: constants_1.LIFECYCLE_UNMOUNT,
-                        key: atomRef.key
-                    });
-                });
-            };
-        }, [db, atomRef]);
-    }
-    function useLifeCycle(db, atomRef) {
-        var rootDb = (0, react_1.useContext)(constants_1.RootContext);
-        var hasAtomRoot = rootDb !== constants_1.defaultContext;
-        if (!hasAtomRoot) {
-            throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `AtomRoot` component'));
-        }
-        var handleAtomLifeCycleState = function () {
-            db.activeRefKeys.add(atomRef.key);
-            return function () {
-                var shouldCleanupAtom = db.subscriptions.listenerCount(atomRef.key) === 0;
-                if (!shouldCleanupAtom) {
-                    return;
-                }
-                db.activeRefKeys.delete(atomRef.key);
-                cleanupRef(db, atomRef);
-            };
+            db.activeRefKeys.delete(atomRef.key);
+            cleanupRef(db, atomRef);
         };
-        useLifeCycleEvents(db, atomRef);
-        (0, react_1.useEffect)(handleAtomLifeCycleState, [db, atomRef]);
-    }
-    exports.useLifeCycle = useLifeCycle;
-});
+    };
+    useLifeCycleEvents(db, atomRef);
+    useEffect(handleAtomLifeCycleState, [db, atomRef]);
+}
