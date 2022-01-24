@@ -12,7 +12,7 @@ var __assign = (this && this.__assign) || function () {
 define(["require", "exports", "react", "./constants", "./db", "./lifecycle", "./mutable", "./utils", "./AtomDevTools", "./AtomRoot"], function (require, exports, react_1, constants_1, db_1, lifecycle_1, mutable_1, utils_1, AtomDevTools_1, AtomRoot_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.useResetAtom = exports.useSendAtom = exports.useReadAtom = exports.atomRef = exports.AtomRoot = exports.AtomDevTools = exports.useIsNew = void 0;
+    exports.useReset = exports.useSend = exports.useRead = exports.atomRef = exports.AtomRoot = exports.AtomDevTools = exports.useIsNew = void 0;
     function defaultTo(defaultValue, value) {
         return value === undefined ? defaultValue : value;
     }
@@ -46,7 +46,7 @@ define(["require", "exports", "react", "./constants", "./db", "./lifecycle", "./
         return ref;
     }
     exports.atomRef = atomRef;
-    function useReadAtom(atomRef, selector) {
+    function useRead(atomRef, selector) {
         var key = atomRef.key, defaultState = atomRef.defaultState;
         var rootDb = (0, react_1.useContext)(constants_1.RootContext);
         var initialStateSlice = (0, db_1.getState)(rootDb)[key];
@@ -74,8 +74,8 @@ define(["require", "exports", "react", "./constants", "./db", "./lifecycle", "./
         (0, lifecycle_1.useLifeCycle)(rootDb, atomRef);
         return hookState;
     }
-    exports.useReadAtom = useReadAtom;
-    function useSendAtom(atomRef) {
+    exports.useRead = useRead;
+    function useSend(atomRef) {
         var key = atomRef.key, defaultState = atomRef.defaultState;
         var rootDb = (0, react_1.useContext)(constants_1.RootContext);
         (0, lifecycle_1.useLifeCycle)(rootDb, atomRef);
@@ -93,10 +93,10 @@ define(["require", "exports", "react", "./constants", "./db", "./lifecycle", "./
             };
         }, [defaultState, rootDb, key, atomRef]);
     }
-    exports.useSendAtom = useSendAtom;
-    function useResetAtom(atomRef) {
-        var mutate = useSendAtom(atomRef);
+    exports.useSend = useSend;
+    function useReset(atomRef) {
+        var mutate = useSend(atomRef);
         return (0, react_1.useMemo)(function () { return function () { return mutate($$resetAtom, atomRef.defaultState); }; }, [mutate, atomRef.defaultState]);
     }
-    exports.useResetAtom = useResetAtom;
+    exports.useReset = useReset;
 });

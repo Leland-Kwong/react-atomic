@@ -40,7 +40,7 @@ define(["require", "exports", "react", "../core"], function (require, exports, r
     });
     var addTodo = function (s, newTodo) { return (__assign(__assign({}, s), { items: __spreadArray(__spreadArray([], s.items, true), [newTodo], false) })); };
     function TodosList() {
-        var todos = (0, core_1.useReadAtom)(todosRef, function (d) { return d.items; });
+        var todos = (0, core_1.useRead)(todosRef, function (d) { return d.items; });
         return (react_1.default.createElement("div", { style: {
                 height: 400,
                 overflow: 'auto'
@@ -53,7 +53,7 @@ define(["require", "exports", "react", "../core"], function (require, exports, r
         })));
     }
     function AddTodo() {
-        var sendTodos = (0, core_1.useSendAtom)(todosRef);
+        var sendTodos = (0, core_1.useSend)(todosRef);
         return (react_1.default.createElement("button", { type: "button", onClick: function () {
                 sendTodos(addTodo, {
                     text: 'buy something',
