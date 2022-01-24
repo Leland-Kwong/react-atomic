@@ -14,6 +14,11 @@ type Subscriptions<T> = Emittery<
 export interface AtomRef<T> {
   key: string
   defaultState: T
+  /**
+   * Whether to reset the state when there are no active
+   * hooks.
+   */
+  resetOnInactive?: boolean
 }
 
 export interface DbState {
@@ -33,7 +38,7 @@ export interface LifeCycleEventData {
 
 export type LifecycleFn = (
   data: LifeCycleEventData & {
-    activeHooks: { [key: string]: number }
+    activeHooks?: { [key: string]: number }
   }
 ) => void
 

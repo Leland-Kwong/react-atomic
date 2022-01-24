@@ -14,10 +14,16 @@ import { errorMsg } from './utils'
 function $$removeInactiveKey() {}
 
 function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
-  mutable.atomRefsByKey.delete(atomRef.key)
+  const { key, resetOnInactive } = atomRef
+
+  mutable.atomRefsByKey.delete(key)
+
+  if (!resetOnInactive) {
+    return
+  }
+
   // remove the state key since is inactive
-  const { [atomRef.key]: _, ...newStateWithoutRef } =
-    getState(db)
+  const { [key]: _, ...newStateWithoutRef } = getState(db)
 
   return setState(
     db,
@@ -28,33 +34,29 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
   )
 }
 
+function numListeners<T>(db: Db<T>, key: string) {
+  return db.subscriptions.listenerCount(key)
+}
+
 function useLifeCycleEvents(
   db: Db<any>,
   atomRef: AtomRef<any>
 ) {
   useEffect(() => {
-    const hasLifeCycleListeners =
-      db.subscriptions.listenerCount($$lifeCycleChannel) > 0
-
-    if (!hasLifeCycleListeners) {
-      return
-    }
-
-    const asyncMountEvent = db.subscriptions.emit(
-      $$lifeCycleChannel,
-      {
+    if (numListeners(db, $$lifeCycleChannel) > 0) {
+      db.subscriptions.emit($$lifeCycleChannel, {
         type: LIFECYCLE_MOUNT,
         key: atomRef.key
-      }
-    )
+      })
+    }
 
     return () => {
-      asyncMountEvent.then(() => {
+      if (numListeners(db, $$lifeCycleChannel) > 0) {
         db.subscriptions.emit($$lifeCycleChannel, {
           type: LIFECYCLE_UNMOUNT,
           key: atomRef.key
         })
-      })
+      }
     }
   }, [db, atomRef])
 }
@@ -92,4 +94,11 @@ export function useLifeCycle(
 
   useLifeCycleEvents(db, atomRef)
   useEffect(handleAtomLifeCycleState, [db, atomRef])
+}
+
+/**
+ * For testing purposes
+ */
+export function useDb<T>(atomRef: AtomRef<T>) {
+  return useContext(RootContext)
 }

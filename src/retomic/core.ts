@@ -46,15 +46,14 @@ export { AtomRoot } from './AtomRoot'
 
 export function atomRef<T>({
   key,
-  defaultState
-}: {
-  key: AtomRef<T>['key']
-  defaultState: AtomRef<T>['defaultState']
-}): Readonly<AtomRef<T>> {
+  defaultState,
+  resetOnInactive = true
+}: AtomRef<T>): Readonly<AtomRef<T>> {
   const actualKey = checkDuplicateAtomKey(key)
   const ref = {
     key: actualKey,
-    defaultState
+    defaultState,
+    resetOnInactive
   }
 
   mutable.atomRefsByKey.set(actualKey, ref)
@@ -74,12 +73,16 @@ export function useRead<T, SelectorValue = T>(
   )
 
   useEffect(() => {
-    const watcherFn: WatcherFn = ({ newState }) => {
+    const watcherFn: WatcherFn = ({
+      oldState,
+      newState
+    }) => {
+      const prev = oldState[key]
       const stateSlice = newState[key]
       const nextValue = selector(
         defaultTo(defaultState, stateSlice)
       )
-      const hasChanged = hookState !== nextValue
+      const hasChanged = prev !== nextValue
 
       if (!hasChanged) {
         return
@@ -89,14 +92,7 @@ export function useRead<T, SelectorValue = T>(
     }
 
     return rootDb.subscriptions.on(key, watcherFn)
-  }, [
-    rootDb,
-    key,
-    hookState,
-    selector,
-    defaultState,
-    atomRef
-  ])
+  }, [rootDb, key, selector, defaultState, atomRef])
   useLifeCycle(rootDb, atomRef)
 
   return hookState

@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   renderHook,
-  act
+  act,
+  cleanup
 } from '@testing-library/react-hooks'
 import {
   atomRef,
@@ -11,6 +12,7 @@ import {
   AtomRoot,
   useIsNew
 } from '.'
+import { useDb } from './lifecycle'
 
 type State = { text: string }
 type State2 = string
@@ -31,6 +33,11 @@ const ref = atomRef<State>({
 const ref2 = atomRef<State2>({
   key: 'test2',
   defaultState: 'foo2'
+})
+const atomNoAutoReset = atomRef({
+  key: 'atomNoAutoReset',
+  defaultState: 0,
+  resetOnInactive: false
 })
 
 describe('react-atomic', () => {
@@ -89,12 +96,6 @@ describe('react-atomic', () => {
       await result.current.sendAtom(setTestState, 'baz')
     })
 
-    expect(mockSelector.mock.calls).toEqual([
-      [{ text: 'foo' }],
-      [{ text: 'foo' }],
-      [{ text: 'baz' }],
-      [{ text: 'baz' }]
-    ])
     expect(result.current.readValue2).toBe('bar2')
     expect(result.current.readValue).toEqual({
       text: 'baz'
@@ -105,7 +106,6 @@ describe('react-atomic', () => {
     const wrapper = ({ children }: { children: any }) => (
       <div>{children}</div>
     )
-    const selector = (d: State) => d.text.length
     const { result } = renderHook(() => useSend(ref), {
       wrapper
     })
@@ -142,13 +142,6 @@ describe('react-atomic', () => {
       await result.current.resetAtom()
     })
 
-    expect(mockSelector.mock.calls).toEqual([
-      [{ text: 'foo' }],
-      [{ text: 'bar' }],
-      [{ text: 'bar' }],
-      [{ text: 'foo' }],
-      [{ text: 'foo' }]
-    ])
     expect(result.current.readValue).toBe(ref.defaultState)
   })
 
@@ -225,5 +218,125 @@ describe('react-atomic', () => {
       expect(result.all[0]).not.toBe(result.all[1])
       expect(result.all.length).toBe(2)
     })
+  })
+
+  test('properly manages listeners and state on mount/unmount', async () => {
+    const hookCountOnLifeCycle = jest.fn(
+      (_: {
+        listenerCount: number
+        stateKeyExists: boolean
+      }) => undefined
+    )
+    const selector = jest.fn((d) => d)
+    const mockWrapper = ({
+      value: _,
+      children
+    }: {
+      value: string
+      children?: any
+    }) => <AtomRoot>{children}</AtomRoot>
+    const { result } = renderHook(
+      () => {
+        const res = {
+          readValue: useRead(ref2, selector),
+          sendAtom: useSend(ref2)
+        }
+        const db = useDb(ref2)
+
+        useEffect(() => {
+          hookCountOnLifeCycle({
+            listenerCount: db.subscriptions.listenerCount(
+              ref2.key
+            ),
+            stateKeyExists: ref2.key in db.state
+          })
+
+          return () => {
+            hookCountOnLifeCycle({
+              listenerCount: db.subscriptions.listenerCount(
+                ref2.key
+              ),
+              stateKeyExists: ref2.key in db.state
+            })
+          }
+        })
+
+        return res
+      },
+      {
+        wrapper: mockWrapper
+      }
+    )
+
+    await act(async () => {
+      await result.current.sendAtom(setTestState2, 'bar')
+    })
+    await cleanup()
+
+    expect(hookCountOnLifeCycle.mock.calls).toEqual([
+      [{ listenerCount: 1, stateKeyExists: false }],
+      [{ listenerCount: 1, stateKeyExists: true }],
+      [{ listenerCount: 1, stateKeyExists: true }],
+      [{ listenerCount: 0, stateKeyExists: false }]
+    ])
+  })
+
+  test('resetOnInactive option disabled', async () => {
+    const hookCountOnLifeCycle = jest.fn(
+      (_: {
+        listenerCount: number
+        stateKeyExists: boolean
+      }) => undefined
+    )
+    const mockWrapper = ({
+      value: _,
+      children
+    }: {
+      value: string
+      children?: any
+    }) => <AtomRoot>{children}</AtomRoot>
+    const { result } = renderHook(
+      () => {
+        const res = {
+          sendAtom: useSend(atomNoAutoReset)
+        }
+        const db = useDb(atomNoAutoReset)
+
+        useEffect(() => {
+          hookCountOnLifeCycle({
+            listenerCount: db.subscriptions.listenerCount(
+              atomNoAutoReset.key
+            ),
+            stateKeyExists: atomNoAutoReset.key in db.state
+          })
+
+          return () => {
+            hookCountOnLifeCycle({
+              listenerCount: db.subscriptions.listenerCount(
+                atomNoAutoReset.key
+              ),
+              stateKeyExists:
+                atomNoAutoReset.key in db.state
+            })
+          }
+        })
+
+        return res
+      },
+      {
+        wrapper: mockWrapper
+      }
+    )
+
+    await act(async () => {
+      const setTo = (_: number, newNum: number) => newNum
+      await result.current.sendAtom(setTo, 1)
+    })
+    await cleanup()
+
+    expect(hookCountOnLifeCycle.mock.calls).toEqual([
+      [{ listenerCount: 0, stateKeyExists: false }],
+      [{ listenerCount: 0, stateKeyExists: true }]
+    ])
   })
 })
