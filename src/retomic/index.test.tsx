@@ -6,7 +6,7 @@ import {
 import {
   atomRef,
   useRead,
-  useResetAtom,
+  useReset,
   useSend,
   AtomRoot,
   useIsNew
@@ -88,7 +88,7 @@ describe('react-atomic', () => {
     })
   })
 
-  test('useResetAtom', async () => {
+  test('useReset', async () => {
     const mockWrapper = ({
       children
     }: {
@@ -98,7 +98,7 @@ describe('react-atomic', () => {
     const { result } = renderHook(
       () => {
         const readValue = useRead(ref, mockSelector)
-        const resetAtom = useResetAtom(ref)
+        const resetAtom = useReset(ref)
         const sendAtom = useSend(ref)
 
         return {

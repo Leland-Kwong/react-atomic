@@ -145,7 +145,7 @@ export function useSend<T>(atomRef: AtomRef<T>) {
   )
 }
 
-export function useResetAtom<T>(atomRef: AtomRef<T>) {
+export function useReset<T>(atomRef: AtomRef<T>) {
   const mutate = useSend(atomRef)
 
   return useMemo(
