@@ -5,7 +5,7 @@ import {
 } from '@testing-library/react-hooks'
 import {
   atomRef,
-  useReadAtom,
+  useRead,
   useResetAtom,
   useSendAtom,
   AtomRoot,
@@ -34,13 +34,13 @@ const ref2 = atomRef<State2>({
 })
 
 describe('react-atomic', () => {
-  test('useReadAtom', () => {
+  test('useRead', () => {
     const wrapper = ({ children }: { children: any }) => (
       <AtomRoot>{children}</AtomRoot>
     )
     const selector = (d: State) => d.text.length
     const { result } = renderHook(
-      () => useReadAtom(ref, selector),
+      () => useRead(ref, selector),
       { wrapper }
     )
 
@@ -54,9 +54,9 @@ describe('react-atomic', () => {
     const mockSelector = jest.fn((d) => d)
     const { result } = renderHook(
       () => {
-        const readValue = useReadAtom(ref, mockSelector)
+        const readValue = useRead(ref, mockSelector)
         const sendAtom = useSendAtom(ref)
-        const readValue2 = useReadAtom(ref2, identity)
+        const readValue2 = useRead(ref2, identity)
         const sendAtom2 = useSendAtom(ref2)
 
         return {
@@ -97,7 +97,7 @@ describe('react-atomic', () => {
     const mockSelector = jest.fn((d) => d)
     const { result } = renderHook(
       () => {
-        const readValue = useReadAtom(ref, mockSelector)
+        const readValue = useRead(ref, mockSelector)
         const resetAtom = useResetAtom(ref)
         const sendAtom = useSendAtom(ref)
 

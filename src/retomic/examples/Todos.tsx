@@ -1,7 +1,7 @@
 import React from 'react'
 import {
   atomRef,
-  useReadAtom,
+  useRead,
   useSendAtom,
   AtomRoot
 } from '../core'
@@ -34,7 +34,7 @@ const addTodo = (
 })
 
 function TodosList() {
-  const todos = useReadAtom(todosRef, (d) => d.items)
+  const todos = useRead(todosRef, (d) => d.items)
 
   return (
     <div

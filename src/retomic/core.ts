@@ -62,7 +62,7 @@ export function atomRef<T>({
   return ref
 }
 
-export function useReadAtom<T, SelectorValue = T>(
+export function useRead<T, SelectorValue = T>(
   atomRef: AtomRef<T>,
   selector: (state: T) => SelectorValue
 ) {
