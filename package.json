@@ -1,22 +1,54 @@
 {
-  "name": "react-atomic",
-  "private": true,
+  "name": "retomic",
+  "version": "0.7.0",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Leland-Kwong/retomic.git"
+  },
+  "author": {
+    "name": "leland kwong",
+    "email": "leland.kwong@gmail.com"
+  },
+  "main": "dist/index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "rm -rf ./dist && tsc --project ./tsconfig.publish.json",
+    "bump:pre": "npm run build && git add . && git commit -m \"build latest\"",
+    "bump:minor": "npm run bump:pre && npm version minor",
+    "lint": "next lint",
+    "eslint": "eslint \"**/*.+(js|jsx|ts|tsx)\"",
+    "test": "jest"
   },
   "dependencies": {
-    "next": "12.0.8",
-    "react": "17.0.2",
-    "react-dom": "17.0.2"
+    "emittery": "^0.10.0",
+    "react-json-view": "^1.21.3"
+  },
+  "peerDependencies": {
+    "react": "^17.0.0 || ^16.3.0 || ^15.5.4",
+    "react-dom": "^17.0.0 || ^16.3.0 || ^15.5.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.16.10",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/preset-react": "^7.16.7",
+    "@babel/preset-typescript": "^7.16.7",
+    "@testing-library/react-hooks": "^7.0.2",
+    "@types/jest": "^27.4.0",
     "@types/node": "17.0.8",
     "@types/react": "17.0.38",
+    "babel-jest": "^27.4.6",
     "eslint": "8.7.0",
     "eslint-config-next": "12.0.8",
-    "typescript": "4.5.4"
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-react-hooks": "^4.3.0",
+    "jest": "^27.4.7",
+    "prettier": "^2.5.1",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
+    "react-test-renderer": "^17.0.2",
+    "typescript": "4.5.4",
+    "next": "12.0.8"
   }
 }
