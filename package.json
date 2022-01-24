@@ -6,7 +6,10 @@
     "type": "git",
     "url": "https://github.com/Leland-Kwong/retomic.git"
   },
-  "author": "leland kwong",
+  "author": {
+    "name": "leland kwong",
+    "email": "leland.kwong@gmail.com"
+  },
   "main": "dist/index.js",
   "scripts": {
     "dev": "next dev",
