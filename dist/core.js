@@ -1,3 +1,4 @@
+"use strict";
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -9,11 +10,13 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { RootContext } from './constants';
-import { getState, setState } from './db';
-import { useLifeCycle } from './lifecycle';
-import { mutable } from './mutable';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.useReset = exports.useSend = exports.useRead = exports.atomRef = exports.AtomRoot = exports.AtomDevTools = exports.useIsNew = void 0;
+var react_1 = require("react");
+var constants_1 = require("./constants");
+var db_1 = require("./db");
+var lifecycle_1 = require("./lifecycle");
+var mutable_1 = require("./mutable");
 function defaultTo(defaultValue, value) {
     return value === undefined ? defaultValue : value;
 }
@@ -21,37 +24,41 @@ function $$resetAtom(_, defaultState) {
     return defaultState;
 }
 function checkDuplicateAtomKey(key) {
-    var isDuplicateKey = mutable.atomRefsByKey.has(key);
+    var isDuplicateKey = mutable_1.mutable.atomRefsByKey.has(key);
     if (isDuplicateKey) {
         var duplicateKeyPrefix = process.env.NODE_ENV === 'development'
             ? '/@atomDuplicate'
             : '';
-        var newKey = "".concat(key).concat(duplicateKeyPrefix, "/").concat(mutable.duplicaKeyCount);
-        mutable.duplicaKeyCount += 1;
+        var newKey = "".concat(key).concat(duplicateKeyPrefix, "/").concat(mutable_1.mutable.duplicaKeyCount);
+        mutable_1.mutable.duplicaKeyCount += 1;
         console.warn("Warning: duplicate atomRef key `".concat(key, "` detected. As a safety precaution a new key, `").concat(newKey, "`, was automatically generated."));
         return newKey;
     }
     return key;
 }
-export { useIsNew } from './utils';
-export { AtomDevTools } from './AtomDevTools';
-export { AtomRoot } from './AtomRoot';
-export function atomRef(_a) {
+var utils_1 = require("./utils");
+Object.defineProperty(exports, "useIsNew", { enumerable: true, get: function () { return utils_1.useIsNew; } });
+var AtomDevTools_1 = require("./AtomDevTools");
+Object.defineProperty(exports, "AtomDevTools", { enumerable: true, get: function () { return AtomDevTools_1.AtomDevTools; } });
+var AtomRoot_1 = require("./AtomRoot");
+Object.defineProperty(exports, "AtomRoot", { enumerable: true, get: function () { return AtomRoot_1.AtomRoot; } });
+function atomRef(_a) {
     var key = _a.key, defaultState = _a.defaultState;
     var actualKey = checkDuplicateAtomKey(key);
     var ref = {
         key: actualKey,
         defaultState: defaultState
     };
-    mutable.atomRefsByKey.set(actualKey, ref);
+    mutable_1.mutable.atomRefsByKey.set(actualKey, ref);
     return ref;
 }
-export function useRead(atomRef, selector) {
+exports.atomRef = atomRef;
+function useRead(atomRef, selector) {
     var key = atomRef.key, defaultState = atomRef.defaultState;
-    var rootDb = useContext(RootContext);
-    var initialStateSlice = getState(rootDb)[key];
-    var _a = useState(selector(defaultTo(defaultState, initialStateSlice))), hookState = _a[0], setHookState = _a[1];
-    useEffect(function () {
+    var rootDb = (0, react_1.useContext)(constants_1.RootContext);
+    var initialStateSlice = (0, db_1.getState)(rootDb)[key];
+    var _a = (0, react_1.useState)(selector(defaultTo(defaultState, initialStateSlice))), hookState = _a[0], setHookState = _a[1];
+    (0, react_1.useEffect)(function () {
         var watcherFn = function (_a) {
             var newState = _a.newState;
             var stateSlice = newState[key];
@@ -71,28 +78,31 @@ export function useRead(atomRef, selector) {
         defaultState,
         atomRef
     ]);
-    useLifeCycle(rootDb, atomRef);
+    (0, lifecycle_1.useLifeCycle)(rootDb, atomRef);
     return hookState;
 }
-export function useSend(atomRef) {
+exports.useRead = useRead;
+function useSend(atomRef) {
     var key = atomRef.key, defaultState = atomRef.defaultState;
-    var rootDb = useContext(RootContext);
-    useLifeCycle(rootDb, atomRef);
-    return useMemo(function () {
+    var rootDb = (0, react_1.useContext)(constants_1.RootContext);
+    (0, lifecycle_1.useLifeCycle)(rootDb, atomRef);
+    return (0, react_1.useMemo)(function () {
         return function (mutationFn, payload) {
             var _a;
             if (process.env.NODE_ENV === 'development' &&
                 !mutationFn.name) {
                 console.error('Warning: This mutation function should be named -', mutationFn);
             }
-            var rootState = getState(rootDb);
+            var rootState = (0, db_1.getState)(rootDb);
             var stateSlice = defaultTo(defaultState, rootState[key]);
             var nextState = __assign(__assign({}, rootState), (_a = {}, _a[key] = mutationFn(stateSlice, payload), _a));
-            return setState(rootDb, nextState, atomRef, mutationFn, payload);
+            return (0, db_1.setState)(rootDb, nextState, atomRef, mutationFn, payload);
         };
     }, [defaultState, rootDb, key, atomRef]);
 }
-export function useReset(atomRef) {
+exports.useSend = useSend;
+function useReset(atomRef) {
     var mutate = useSend(atomRef);
-    return useMemo(function () { return function () { return mutate($$resetAtom, atomRef.defaultState); }; }, [mutate, atomRef.defaultState]);
+    return (0, react_1.useMemo)(function () { return function () { return mutate($$resetAtom, atomRef.defaultState); }; }, [mutate, atomRef.defaultState]);
 }
+exports.useReset = useReset;

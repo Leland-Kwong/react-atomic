@@ -1,4 +1,7 @@
-import { useRef } from 'react';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.errorMsg = exports.useIsNew = void 0;
+var react_1 = require("react");
 function shallowCompare(cache, value) {
     var maybeNewValue = value !== cache;
     if (maybeNewValue) {
@@ -18,9 +21,9 @@ function shallowCompare(cache, value) {
     }
     return cache !== value;
 }
-export function useIsNew(fn, isNewValue) {
+function useIsNew(fn, isNewValue) {
     if (isNewValue === void 0) { isNewValue = shallowCompare; }
-    var cache = useRef(null);
+    var cache = (0, react_1.useRef)(null);
     return function (x) {
         var next = fn(x);
         var shouldUpdateCache = cache.current === null ||
@@ -31,6 +34,8 @@ export function useIsNew(fn, isNewValue) {
         return cache.current;
     };
 }
-export function errorMsg(msg) {
+exports.useIsNew = useIsNew;
+function errorMsg(msg) {
     return "[retomic error]: ".concat(msg);
 }
+exports.errorMsg = errorMsg;
