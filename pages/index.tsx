@@ -8,7 +8,7 @@ import {
   useIsNew,
   useRead,
   useSend,
-  AtomRoot
+  RetomicRoot
 } from '../src/retomic'
 
 type $Hello = {
@@ -141,11 +141,11 @@ const Home: NextPage = () => {
       <main>
         <h1>React Atomic</h1>
 
-        <AtomRoot>
+        <RetomicRoot>
           <MessageOnly />
           <AtomAppDemo />
           <AtomDevTools />
-        </AtomRoot>
+        </RetomicRoot>
       </main>
     </div>
   )

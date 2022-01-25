@@ -9,7 +9,7 @@ import {
   useRead,
   useReset,
   useSend,
-  AtomRoot,
+  RetomicRoot,
   useIsNew
 } from '.'
 import { useOnLifeCycle } from './lifecycle'
@@ -43,7 +43,7 @@ const atomNoAutoReset = atomRef({
 describe('core', () => {
   test('useRead', () => {
     const wrapper = ({ children }: { children: any }) => (
-      <AtomRoot>{children}</AtomRoot>
+      <RetomicRoot>{children}</RetomicRoot>
     )
     const selector = (d: State) => d.text.length
     const { result } = renderHook(
@@ -56,7 +56,7 @@ describe('core', () => {
 
   test('useSend', async () => {
     const wrapper = ({ children }: { children: any }) => (
-      <AtomRoot>{children}</AtomRoot>
+      <RetomicRoot>{children}</RetomicRoot>
     )
     const mockSelector = jest.fn((d) => d)
     const { result } = renderHook(
@@ -91,7 +91,7 @@ describe('core', () => {
 
   test('useReset', async () => {
     const wrapper = ({ children }: { children: any }) => (
-      <AtomRoot>{children}</AtomRoot>
+      <RetomicRoot>{children}</RetomicRoot>
     )
     const mockSelector = jest.fn((d) => d)
     const { result } = renderHook(
@@ -119,7 +119,7 @@ describe('core', () => {
     expect(result.current.readValue).toBe(ref.defaultState)
   })
 
-  describe('check for missing AtomRoot wrapper', () => {
+  describe('check for missing RetomicRoot wrapper', () => {
     test('useRead', () => {
       const wrapper = ({ children }: { children: any }) => (
         <div>{children}</div>
@@ -149,7 +149,7 @@ describe('core', () => {
 describe('extras', () => {
   describe('use cache', () => {
     const wrapper = ({ children }: { children?: any }) => (
-      <AtomRoot>{children}</AtomRoot>
+      <RetomicRoot>{children}</RetomicRoot>
     )
 
     test('primitive compare', () => {
@@ -223,7 +223,7 @@ describe('lifecycle', () => {
     const onLifeCycle = jest.fn()
     const lifeCycleWatcher = (d: any) => d
     const wrapper = ({ children }: { children?: any }) => (
-      <AtomRoot>{children}</AtomRoot>
+      <RetomicRoot>{children}</RetomicRoot>
     )
     const { result } = renderHook(
       () => {
@@ -283,7 +283,7 @@ describe('lifecycle', () => {
   test('resetOnInactive option disabled', async () => {
     const onLifeCycle = jest.fn()
     const wrapper = ({ children }: { children?: any }) => (
-      <AtomRoot>{children}</AtomRoot>
+      <RetomicRoot>{children}</RetomicRoot>
     )
     const { result } = renderHook(
       () => {

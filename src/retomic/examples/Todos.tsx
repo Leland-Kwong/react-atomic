@@ -3,7 +3,7 @@ import {
   atomRef,
   useRead,
   useSend,
-  AtomRoot
+  RetomicRoot
 } from '../core'
 
 type Todo = { text: string; done: boolean; id: string }
@@ -76,10 +76,10 @@ export function Todos() {
   return (
     <div>
       <h1>Retomic Example</h1>
-      <AtomRoot>
+      <RetomicRoot>
         <TodosList />
         <AddTodo />
-      </AtomRoot>
+      </RetomicRoot>
     </div>
   )
 }

@@ -82,12 +82,12 @@ export function useLifeCycle(
   hookType: keyof Db<any>['activeHooks']
 ) {
   const db = useDb()
-  const hasAtomRoot = db !== defaultContext
+  const hasRetomicRoot = db !== defaultContext
 
-  if (!hasAtomRoot) {
+  if (!hasRetomicRoot) {
     throw new Error(
       errorMsg(
-        'Application tree must be wrapped in an `AtomRoot` component'
+        'Application tree must be wrapped in an `RetomicRoot` component'
       )
     )
   }

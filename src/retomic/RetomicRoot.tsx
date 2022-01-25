@@ -5,18 +5,18 @@ import { defaultContext, RootContext } from './constants'
 import { errorMsg, useDb } from './utils'
 import type { DbState } from './types'
 
-export function AtomRoot({
+export function RetomicRoot({
   children
 }: {
   children: ReactChild | ReactChild[]
 }) {
   const currentDb = useDb()
-  const isNestedAtomRoot = currentDb !== defaultContext
+  const isNestedRetomicRoot = currentDb !== defaultContext
 
-  if (isNestedAtomRoot) {
+  if (isNestedRetomicRoot) {
     throw new Error(
       errorMsg(
-        'Application tree may only be wrapped in a single `AtomRoot` component'
+        'Application tree may only be wrapped in a single `RetomicRoot` component'
       )
     )
   }

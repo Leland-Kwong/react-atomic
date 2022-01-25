@@ -36,7 +36,9 @@ function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
 
 export type { AtomRef } from './types'
 export { AtomDevTools } from './AtomDevTools'
-export { AtomRoot } from './AtomRoot'
+// IMPORTANT: for backwards compatibility
+export { RetomicRoot as AtomRoot } from './RetomicRoot'
+export { RetomicRoot } from './RetomicRoot'
 
 export function atomRef<T>({
   key,
