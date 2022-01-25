@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react'
 import {
-  emitLifeCycleEvent,
+  emitLifecycleEvent,
   getState,
   setState
 } from './db'
-import type { Atom, Db, LifeCycleEventData } from './types'
+import type { Atom, Db, LifecycleEventData } from './types'
 import {
   $$lifeCycleChannel,
   lifecycleMount,
@@ -13,8 +13,8 @@ import {
 import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
-const onLifeCycleDefaults = {
-  predicate<T>({ key }: LifeCycleEventData, atom: Atom<T>) {
+const onLifecycleDefaults = {
+  predicate<T>({ key }: LifecycleEventData, atom: Atom<T>) {
     return key === atom.key
   }
 }
@@ -49,7 +49,7 @@ function isAtomActive<T>(db: Db<T>, atom: Atom<T>) {
   return db.activeHooks[atom.key] > 0
 }
 
-export function useLifeCycle(
+export function useLifecycle(
   atom: Atom<any>,
   hookType: keyof Db<any>['activeHooks']
 ) {
@@ -64,10 +64,10 @@ export function useLifeCycle(
     )
   }
 
-  const handleAtomLifeCycleState = () => {
+  const handleAtomLifecycleState = () => {
     db.activeHooks[atom.key] =
       (db.activeHooks[atom.key] || 0) + 1
-    emitLifeCycleEvent(db, atom, lifecycleMount)
+    emitLifecycleEvent(db, atom, lifecycleMount)
 
     return () => {
       db.activeHooks[atom.key] -= 1
@@ -77,14 +77,14 @@ export function useLifeCycle(
         cleanupRef(db, atom)
       }
 
-      emitLifeCycleEvent(db, atom, lifecycleUnmount)
+      emitLifecycleEvent(db, atom, lifecycleUnmount)
     }
   }
 
-  useEffect(handleAtomLifeCycleState, [db, atom, hookType])
+  useEffect(handleAtomLifecycleState, [db, atom, hookType])
 }
 
-export function useOnLifeCycle<T>(
+export function useOnLifecycle<T>(
   atom: Atom<T>,
   fn: (data: {
     type: string
@@ -92,9 +92,9 @@ export function useOnLifeCycle<T>(
     state: Db<T>['state']
   }) => void,
   predicate: (
-    data: LifeCycleEventData,
+    data: LifecycleEventData,
     atom: Atom<T>
-  ) => boolean = onLifeCycleDefaults.predicate
+  ) => boolean = onLifecycleDefaults.predicate
 ) {
   const db = useDb()
   const unsubscribe = useMemo(() => {

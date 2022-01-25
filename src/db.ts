@@ -22,7 +22,7 @@ function numListeners<T>(db: Db<T>, key: string) {
   return db.subscriptions.listenerCount(key)
 }
 
-export function emitLifeCycleEvent<T>(
+export function emitLifecycleEvent<T>(
   db: Db<T>,
   atom: Atom<T>,
   type:
@@ -63,7 +63,7 @@ export async function setState<T>(
 
   return Promise.all([
     db.subscriptions.emit(atom.key, eventData),
-    emitLifeCycleEvent(db, atom, lifecycleStateChange)
+    emitLifecycleEvent(db, atom, lifecycleStateChange)
   ])
 }
 

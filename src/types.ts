@@ -10,7 +10,7 @@ type Subscriptions<T> = Emittery<
     [key: Atom<T>['key']]: WatcherEventData
     [lifecycleStateChange]: WatcherEventData
   } & {
-    [$$lifeCycleChannel]: LifeCycleEventData
+    [$$lifeCycleChannel]: LifecycleEventData
   }
 >
 
@@ -27,14 +27,14 @@ export interface Db<T> {
   }
 }
 
-export interface LifeCycleEventData {
+export interface LifecycleEventData {
   type: string
   key: Atom<any>['key']
   state: Db<any>['state']
   activeHooks: Readonly<Db<any>['activeHooks']>
 }
 
-export type LifecycleFn = (data: LifeCycleEventData) => void
+export type LifecycleFn = (data: LifecycleEventData) => void
 
 interface WatcherEventData {
   oldState: DbState
@@ -49,7 +49,7 @@ export type WatcherFn = (data: WatcherEventData) => void
 
 export interface AtomObserverProps {
   onChange: WatcherFn
-  onLifeCycle?: LifecycleFn
+  onLifecycle?: LifecycleFn
 }
 
 export interface DevToolsLogEntry {

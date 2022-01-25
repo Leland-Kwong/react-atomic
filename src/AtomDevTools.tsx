@@ -8,20 +8,20 @@ import { useDb } from './utils'
 import {
   AtomObserverProps,
   DevToolsLogEntry,
-  LifeCycleEventData
+  LifecycleEventData
 } from './types'
 
 function AtomObserver({
   onChange,
-  onLifeCycle = noop
+  onLifecycle = noop
 }: AtomObserverProps) {
   const rootDb = useDb()
 
   useEffect(() => {
-    const onLifeCycleWrapper = (
-      data: LifeCycleEventData
+    const onLifecycleWrapper = (
+      data: LifecycleEventData
     ) => {
-      onLifeCycle(data)
+      onLifecycle(data)
     }
 
     const subscriptions = [
@@ -31,14 +31,14 @@ function AtomObserver({
       ),
       rootDb.subscriptions.on(
         $$lifeCycleChannel,
-        onLifeCycleWrapper
+        onLifecycleWrapper
       )
     ]
 
     return () => {
       subscriptions.forEach((unsubscribe) => unsubscribe())
     }
-  }, [onChange, onLifeCycle, rootDb])
+  }, [onChange, onLifecycle, rootDb])
 
   return null
 }
@@ -80,7 +80,7 @@ export function AtomDevTools({ logSize = 50 }) {
             timestamp: performance.now()
           })
         },
-        onLifeCycle: (data) => {
+        onLifecycle: (data) => {
           const { activeHooks } = data
 
           setHookInfo(() => activeHooks)

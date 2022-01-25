@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getState, setState } from './db'
-import { useLifeCycle } from './lifecycle'
+import { useLifecycle } from './lifecycle'
 import type {
   Atom,
   SelectorFn,
@@ -69,7 +69,7 @@ export function useRead<T, SelectorValue = T>(
 
     return rootDb.subscriptions.on(key, watcherFn)
   }, [rootDb, key, selector, defaultState, atom])
-  useLifeCycle(atom, 'read')
+  useLifecycle(atom, 'read')
 
   return hookState
 }
@@ -77,7 +77,7 @@ export function useRead<T, SelectorValue = T>(
 export function useSend<T>(atom: Atom<T>) {
   const rootDb = useDb()
 
-  useLifeCycle(atom, 'send')
+  useLifecycle(atom, 'send')
   return useMemo(
     () =>
       <Payload>(

@@ -12,7 +12,7 @@ import {
   RetomicRoot,
   useIsNew
 } from '.'
-import { useOnLifeCycle } from './lifecycle'
+import { useOnLifecycle } from './lifecycle'
 
 type State = { text: string }
 type State2 = string
@@ -220,14 +220,14 @@ describe('extras', () => {
 
 describe('lifecycle', () => {
   test('properly manages listeners and state on mount/unmount', async () => {
-    const onLifeCycle = jest.fn()
+    const onLifecycle = jest.fn()
     const lifeCycleWatcher = (d: any) => d
     const wrapper = ({ children }: { children?: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
     const { result } = renderHook(
       () => {
-        useOnLifeCycle(ref2, onLifeCycle)
+        useOnLifecycle(ref2, onLifecycle)
 
         return {
           readValue: useRead(ref2, lifeCycleWatcher),
@@ -242,7 +242,7 @@ describe('lifecycle', () => {
     })
     await cleanup()
 
-    expect(onLifeCycle.mock.calls).toEqual([
+    expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
@@ -297,13 +297,13 @@ describe('lifecycle', () => {
   })
 
   test('resetOnInactive option disabled', async () => {
-    const onLifeCycle = jest.fn()
+    const onLifecycle = jest.fn()
     const wrapper = ({ children }: { children?: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
     const { result } = renderHook(
       () => {
-        useOnLifeCycle(atomNoAutoReset, onLifeCycle)
+        useOnLifecycle(atomNoAutoReset, onLifecycle)
 
         return {
           sendAtom: useSend(atomNoAutoReset)
@@ -318,7 +318,7 @@ describe('lifecycle', () => {
     })
     await cleanup()
 
-    expect(onLifeCycle.mock.calls).toEqual([
+    expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
