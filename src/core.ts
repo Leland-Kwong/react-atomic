@@ -81,16 +81,16 @@ export function useSend<T>(atom: Atom<T>) {
   return useMemo(
     () =>
       <Payload>(
-        mutationFn: UpdateFn<T, Payload>,
+        updateFn: UpdateFn<T, Payload>,
         payload: Payload
       ) => {
         if (
           process.env.NODE_ENV === 'development' &&
-          !mutationFn.name
+          !updateFn.name
         ) {
           console.error(
-            'Warning: This mutation function should be named -',
-            mutationFn
+            'Warning: This update function should be named -',
+            updateFn
           )
         }
 
@@ -102,14 +102,14 @@ export function useSend<T>(atom: Atom<T>) {
         )
         const nextState = {
           ...rootState,
-          [key]: mutationFn(stateSlice, payload)
+          [key]: updateFn(stateSlice, payload)
         }
 
         return setState(
           rootDb,
           nextState,
           atom,
-          mutationFn,
+          updateFn,
           payload
         )
       },

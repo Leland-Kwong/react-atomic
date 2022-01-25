@@ -64,13 +64,13 @@ export function AtomDevTools({ logSize = 50 }) {
         onChange: ({
           newState,
           atom,
-          mutationFn,
-          mutationPayload
+          updateFn,
+          updatePayload
         }) => {
           addLogEntry({
             action: {
-              functionName: mutationFn.name,
-              payload: mutationPayload,
+              functionName: updateFn.name,
+              payload: updatePayload,
               atomKey: atom.key
             },
             atomState: newState,

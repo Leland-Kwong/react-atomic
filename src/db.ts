@@ -17,16 +17,16 @@ export function setState<T>(
   db: Db<T>,
   newState: T,
   atom: Atom<T>,
-  mutationFn: Function,
-  mutationPayload: any
+  updateFn: Function,
+  updatePayload: any
 ) {
   const oldState = db.state
   const eventData = {
     oldState,
     newState,
     atom,
-    mutationFn,
-    mutationPayload,
+    updateFn,
+    updatePayload,
     db
   }
 

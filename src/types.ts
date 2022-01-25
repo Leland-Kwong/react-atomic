@@ -37,8 +37,8 @@ interface WatcherEventData {
   oldState: DbState
   newState: DbState
   atom: Atom<any>
-  mutationFn: Function
-  mutationPayload: any
+  updateFn: Function
+  updatePayload: any
   db: Db<any>
 }
 
