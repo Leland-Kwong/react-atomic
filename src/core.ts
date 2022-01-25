@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getState, setState } from './db'
 import { useLifeCycle } from './lifecycle'
-import type { Atom, WatcherFn } from './types'
+import type {
+  Atom,
+  SelectorFn,
+  UpdateFn,
+  WatcherFn
+} from './types'
 import { useDb } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -12,9 +17,9 @@ function $$resetAtom<T>(_: T, defaultState: T) {
   return defaultState
 }
 
-export type { Atom } from './types'
+export type { Atom, SelectorFn, UpdateFn } from './types'
 export { AtomDevTools } from './AtomDevTools'
-// IMPORTANT: for backwards compatibility
+// IMPORTANT: alias for backwards compatibility
 export { RetomicRoot as AtomRoot } from './RetomicRoot'
 export { RetomicRoot } from './RetomicRoot'
 
@@ -29,12 +34,12 @@ export function atom<T>({
     resetOnInactive
   }
 }
-// IMPORTANT: for backwards compatibility
+// IMPORTANT: alias for backwards compatibility
 export const atomRef = atom
 
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
-  selector: (state: T) => SelectorValue
+  selector: SelectorFn<T, SelectorValue>
 ) {
   const { key, defaultState } = atom
   const rootDb = useDb()
@@ -76,7 +81,7 @@ export function useSend<T>(atom: Atom<T>) {
   return useMemo(
     () =>
       <Payload>(
-        mutationFn: (oldState: T, payload: Payload) => T,
+        mutationFn: UpdateFn<T, Payload>,
         payload: Payload
       ) => {
         if (

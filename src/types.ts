@@ -11,16 +11,6 @@ type Subscriptions<T> = Emittery<
   }
 >
 
-export interface Atom<T> {
-  key: string
-  defaultState: T
-  /**
-   * Whether to reset the state when there are no active
-   * hooks.
-   */
-  resetOnInactive?: boolean
-}
-
 export interface DbState {
   [key: string]: any
 }
@@ -68,3 +58,25 @@ export interface DevToolsLogEntry {
     atomKey: string
   }
 }
+
+/***************
+ * Public Types
+ ***************/
+export interface Atom<T> {
+  key: string
+  defaultState: T
+  /**
+   * Whether to reset the state when there are no active
+   * hooks.
+   */
+  resetOnInactive?: boolean
+}
+
+export type SelectorFn<State, SelectorValue> = (
+  state: State
+) => SelectorValue
+
+export type UpdateFn<State, Payload> = (
+  state: State,
+  payload: Payload
+) => State
