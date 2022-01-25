@@ -40,7 +40,7 @@ const atomNoAutoReset = atomRef({
   resetOnInactive: false
 })
 
-describe('react-atomic', () => {
+describe('core', () => {
   test('useRead', () => {
     const wrapper = ({ children }: { children: any }) => (
       <AtomRoot>{children}</AtomRoot>
@@ -52,32 +52,6 @@ describe('react-atomic', () => {
     )
 
     expect(result.current).toBe(3)
-  })
-
-  describe('check for missing AtomRoot wrapping', () => {
-    test('useRead', () => {
-      const wrapper = ({ children }: { children: any }) => (
-        <div>{children}</div>
-      )
-      const selector = (d: State) => d.text.length
-      const { result } = renderHook(
-        () => useRead(ref, selector),
-        { wrapper }
-      )
-
-      expect(() => result.current).toThrow()
-    })
-
-    test('useSend', () => {
-      const wrapper = ({ children }: { children: any }) => (
-        <div>{children}</div>
-      )
-      const { result } = renderHook(() => useSend(ref), {
-        wrapper
-      })
-
-      expect(() => result.current).toThrow()
-    })
   })
 
   test('useSend', async () => {
@@ -145,6 +119,34 @@ describe('react-atomic', () => {
     expect(result.current.readValue).toBe(ref.defaultState)
   })
 
+  describe('check for missing AtomRoot wrapper', () => {
+    test('useRead', () => {
+      const wrapper = ({ children }: { children: any }) => (
+        <div>{children}</div>
+      )
+      const selector = (d: State) => d.text.length
+      const { result } = renderHook(
+        () => useRead(ref, selector),
+        { wrapper }
+      )
+
+      expect(() => result.current).toThrow()
+    })
+
+    test('useSend', () => {
+      const wrapper = ({ children }: { children: any }) => (
+        <div>{children}</div>
+      )
+      const { result } = renderHook(() => useSend(ref), {
+        wrapper
+      })
+
+      expect(() => result.current).toThrow()
+    })
+  })
+})
+
+describe('extras', () => {
   describe('use cache', () => {
     const wrapper = ({ children }: { children?: any }) => (
       <AtomRoot>{children}</AtomRoot>
@@ -214,7 +216,9 @@ describe('react-atomic', () => {
       expect(result.all.length).toBe(2)
     })
   })
+})
 
+describe('lifecycle', () => {
   test('properly manages listeners and state on mount/unmount', async () => {
     const onLifeCycle = jest.fn()
     const lifeCycleWatcher = (d: any) => d
