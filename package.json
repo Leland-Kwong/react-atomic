@@ -15,7 +15,9 @@
     "dev": "next dev",
     "build": "rm -rf ./dist && tsc --project ./tsconfig.publish.json",
     "bump:pre": "npm run build && git add . && git commit -m \"build latest\"",
+    "bump:major": "npm run bump:pre && npm version major",
     "bump:minor": "npm run bump:pre && npm version minor",
+    "bump:patch": "npm run bump:pre && npm version patch",
     "lint": "next lint",
     "eslint": "eslint \"**/*.+(js|jsx|ts|tsx)\"",
     "test": "jest"
