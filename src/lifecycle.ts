@@ -7,8 +7,8 @@ import {
 import type { Atom, Db, LifeCycleEventData } from './types'
 import {
   $$lifeCycleChannel,
-  LIFECYCLE_MOUNT,
-  LIFECYCLE_UNMOUNT
+  lifecycleMount,
+  lifecycleUnmount
 } from './constants'
 import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
@@ -67,7 +67,7 @@ export function useLifeCycle(
   const handleAtomLifeCycleState = () => {
     db.activeHooks[atom.key] =
       (db.activeHooks[atom.key] || 0) + 1
-    emitLifeCycleEvent(db, atom, LIFECYCLE_MOUNT)
+    emitLifeCycleEvent(db, atom, lifecycleMount)
 
     return () => {
       db.activeHooks[atom.key] -= 1
@@ -77,7 +77,7 @@ export function useLifeCycle(
         cleanupRef(db, atom)
       }
 
-      emitLifeCycleEvent(db, atom, LIFECYCLE_UNMOUNT)
+      emitLifeCycleEvent(db, atom, lifecycleUnmount)
     }
   }
 

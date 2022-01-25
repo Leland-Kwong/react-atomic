@@ -1,9 +1,9 @@
 import Emittery from 'emittery'
 import {
   $$lifeCycleChannel,
-  LIFECYCLE_STATE_CHANGE,
-  LIFECYCLE_MOUNT,
-  LIFECYCLE_UNMOUNT
+  lifecycleStateChange,
+  lifecycleMount,
+  lifecycleUnmount
 } from './constants'
 import type { Atom, Db } from './types'
 
@@ -26,9 +26,9 @@ export function emitLifeCycleEvent<T>(
   db: Db<T>,
   atom: Atom<T>,
   type:
-    | typeof LIFECYCLE_MOUNT
-    | typeof LIFECYCLE_UNMOUNT
-    | typeof LIFECYCLE_STATE_CHANGE
+    | typeof lifecycleMount
+    | typeof lifecycleUnmount
+    | typeof lifecycleStateChange
 ): Promise<void> {
   if (numListeners(db, $$lifeCycleChannel) === 0) {
     return Promise.resolve()
@@ -63,7 +63,7 @@ export async function setState<T>(
 
   return Promise.all([
     db.subscriptions.emit(atom.key, eventData),
-    emitLifeCycleEvent(db, atom, LIFECYCLE_STATE_CHANGE)
+    emitLifeCycleEvent(db, atom, lifecycleStateChange)
   ])
 }
 
