@@ -1,11 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { mutable } from './mutable'
 import { getState, setState } from './db'
-import type {
-  AtomRef,
-  Db,
-  LifeCycleEventData
-} from './types'
+import type { Atom, Db, LifeCycleEventData } from './types'
 import {
   $$lifeCycleChannel,
   LIFECYCLE_MOUNT,
@@ -15,11 +11,8 @@ import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
 const onLifeCycleDefaults = {
-  predicate<T>(
-    { key }: LifeCycleEventData,
-    atomRef: AtomRef<T>
-  ) {
-    return key === atomRef.key
+  predicate<T>({ key }: LifeCycleEventData, atom: Atom<T>) {
+    return key === atom.key
   }
 }
 
@@ -27,10 +20,10 @@ function numListeners<T>(db: Db<T>, key: string) {
   return db.subscriptions.listenerCount(key)
 }
 
-function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
-  const { key, resetOnInactive } = atomRef
+function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
+  const { key, resetOnInactive } = atom
 
-  mutable.atomRefsByKey.delete(key)
+  mutable.atomsByKey.delete(key)
 
   if (!resetOnInactive) {
     return
@@ -49,19 +42,19 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
   return setState(
     db,
     newStateWithoutRef,
-    atomRef,
+    atom,
     $$removeInactiveKey,
     undefined
   )
 }
 
-function isAtomActive<T>(db: Db<T>, atomRef: AtomRef<T>) {
-  return db.activeHooks[atomRef.key] > 0
+function isAtomActive<T>(db: Db<T>, atom: Atom<T>) {
+  return db.activeHooks[atom.key] > 0
 }
 
 function emitLifeCycleEvent<T>(
   db: Db<T>,
-  atomRef: AtomRef<T>,
+  atom: Atom<T>,
   // TODO: add LIFECYCLE_STATE_CHANGE as a type as well
   type: typeof LIFECYCLE_MOUNT | typeof LIFECYCLE_UNMOUNT
 ) {
@@ -71,53 +64,49 @@ function emitLifeCycleEvent<T>(
 
   db.subscriptions.emit($$lifeCycleChannel, {
     type,
-    key: atomRef.key,
+    key: atom.key,
     state: getState(db),
     activeHooks: { ...db.activeHooks }
   })
 }
 
 export function useLifeCycle(
-  atomRef: AtomRef<any>,
+  atom: Atom<any>,
   hookType: keyof Db<any>['activeHooks']
 ) {
   const db = useDb()
-  const hasAtomRoot = db !== defaultContext
+  const hasRetomicRoot = db !== defaultContext
 
-  if (!hasAtomRoot) {
+  if (!hasRetomicRoot) {
     throw new Error(
       errorMsg(
-        'Application tree must be wrapped in an `AtomRoot` component'
+        'Application tree must be wrapped in an `RetomicRoot` component'
       )
     )
   }
 
   const handleAtomLifeCycleState = () => {
-    db.activeHooks[atomRef.key] =
-      (db.activeHooks[atomRef.key] || 0) + 1
-    emitLifeCycleEvent(db, atomRef, LIFECYCLE_MOUNT)
+    db.activeHooks[atom.key] =
+      (db.activeHooks[atom.key] || 0) + 1
+    emitLifeCycleEvent(db, atom, LIFECYCLE_MOUNT)
 
     return () => {
-      db.activeHooks[atomRef.key] -= 1
+      db.activeHooks[atom.key] -= 1
 
-      if (!isAtomActive(db, atomRef)) {
-        delete db.activeHooks[atomRef.key]
-        cleanupRef(db, atomRef)
+      if (!isAtomActive(db, atom)) {
+        delete db.activeHooks[atom.key]
+        cleanupRef(db, atom)
       }
 
-      emitLifeCycleEvent(db, atomRef, LIFECYCLE_UNMOUNT)
+      emitLifeCycleEvent(db, atom, LIFECYCLE_UNMOUNT)
     }
   }
 
-  useEffect(handleAtomLifeCycleState, [
-    db,
-    atomRef,
-    hookType
-  ])
+  useEffect(handleAtomLifeCycleState, [db, atom, hookType])
 }
 
 export function useOnLifeCycle<T>(
-  atomRef: AtomRef<T>,
+  atom: Atom<T>,
   fn: (data: {
     type: string
     activeHooks: Db<T>['activeHooks']
@@ -125,7 +114,7 @@ export function useOnLifeCycle<T>(
   }) => void,
   predicate: (
     data: LifeCycleEventData,
-    atomRef: AtomRef<T>
+    atom: Atom<T>
   ) => boolean = onLifeCycleDefaults.predicate
 ) {
   const db = useDb()
@@ -135,7 +124,7 @@ export function useOnLifeCycle<T>(
       (data) => {
         const { type, state, activeHooks } = data
 
-        if (!predicate(data, atomRef)) {
+        if (!predicate(data, atom)) {
           return
         }
 
@@ -146,7 +135,7 @@ export function useOnLifeCycle<T>(
         })
       }
     )
-  }, [db, fn, predicate, atomRef])
+  }, [db, fn, predicate, atom])
 
   return unsubscribe
 }

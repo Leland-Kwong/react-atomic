@@ -26,7 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Todos = void 0;
 var react_1 = __importDefault(require("react"));
 var core_1 = require("../core");
-var todosRef = (0, core_1.atomRef)({
+var todosRef = (0, core_1.atom)({
     key: 'todos',
     defaultState: {
         items: [
@@ -65,7 +65,7 @@ function AddTodo() {
 function Todos() {
     return (react_1.default.createElement("div", null,
         react_1.default.createElement("h1", null, "Retomic Example"),
-        react_1.default.createElement(core_1.AtomRoot, null,
+        react_1.default.createElement(core_1.RetomicRoot, null,
             react_1.default.createElement(TodosList, null),
             react_1.default.createElement(AddTodo, null))));
 }

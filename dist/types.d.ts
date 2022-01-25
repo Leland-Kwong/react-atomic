@@ -1,12 +1,12 @@
 import Emittery from 'emittery';
 import { $$internal, $$lifeCycleChannel } from './constants';
 declare type Subscriptions<T> = Emittery<{
-    [key: AtomRef<T>['key']]: WatcherEventData;
+    [key: Atom<T>['key']]: WatcherEventData;
     [$$internal]: WatcherEventData;
 } & {
     [$$lifeCycleChannel]: LifeCycleEventData;
 }>;
-export interface AtomRef<T> {
+export interface Atom<T> {
     key: string;
     defaultState: T;
     /**
@@ -22,12 +22,12 @@ export interface Db<T> {
     state: Readonly<DbState>;
     subscriptions: Subscriptions<T>;
     activeHooks: {
-        [atomRefKey: string]: number;
+        [atomKey: string]: number;
     };
 }
 export interface LifeCycleEventData {
     type: string;
-    key: AtomRef<any>['key'];
+    key: Atom<any>['key'];
     state: Db<any>['state'];
     activeHooks: Readonly<Db<any>['activeHooks']>;
 }
@@ -35,7 +35,7 @@ export declare type LifecycleFn = (data: LifeCycleEventData) => void;
 interface WatcherEventData {
     oldState: DbState;
     newState: DbState;
-    atomRef: AtomRef<any>;
+    atom: Atom<any>;
     mutationFn: Function;
     mutationPayload: any;
     db: Db<any>;

@@ -75,12 +75,12 @@ function AtomDevTools(_a) {
     var atomObserverProps = (0, react_1.useMemo)(function () {
         return {
             onChange: function (_a) {
-                var newState = _a.newState, atomRef = _a.atomRef, mutationFn = _a.mutationFn, mutationPayload = _a.mutationPayload;
+                var newState = _a.newState, atom = _a.atom, mutationFn = _a.mutationFn, mutationPayload = _a.mutationPayload;
                 addLogEntry({
                     action: {
                         functionName: mutationFn.name,
                         payload: mutationPayload,
-                        atomKey: atomRef.key
+                        atomKey: atom.key
                     },
                     atomState: newState,
                     timestamp: performance.now()

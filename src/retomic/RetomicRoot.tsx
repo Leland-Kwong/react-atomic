@@ -1,27 +1,27 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { makeDb } from './db'
 import type { ReactChild } from 'react'
 import { defaultContext, RootContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 import type { DbState } from './types'
 
-export function AtomRoot({
+export function RetomicRoot({
   children
 }: {
   children: ReactChild | ReactChild[]
 }) {
   const currentDb = useDb()
-  const isNestedAtomRoot = currentDb !== defaultContext
+  const isNestedRetomicRoot = currentDb !== defaultContext
 
-  if (isNestedAtomRoot) {
+  if (isNestedRetomicRoot) {
     throw new Error(
       errorMsg(
-        'Application tree may only be wrapped in a single `AtomRoot` component'
+        'Application tree may only be wrapped in a single `RetomicRoot` component'
       )
     )
   }
 
-  const db = makeDb<DbState>({})
+  const db = useMemo(() => makeDb<DbState>({}), [])
 
   return (
     <RootContext.Provider value={db}>

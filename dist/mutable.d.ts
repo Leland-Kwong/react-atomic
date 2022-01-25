@@ -1,5 +1,5 @@
-import type { AtomRef } from './types';
+import type { Atom } from './types';
 export declare const mutable: {
     duplicaKeyCount: number;
-    atomRefsByKey: Map<string, AtomRef<any>>;
+    atomsByKey: Map<string, Atom<any>>;
 };

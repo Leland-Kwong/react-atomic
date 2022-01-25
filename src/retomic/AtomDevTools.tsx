@@ -63,7 +63,7 @@ export function AtomDevTools({ logSize = 50 }) {
       return {
         onChange: ({
           newState,
-          atomRef,
+          atom,
           mutationFn,
           mutationPayload
         }) => {
@@ -71,7 +71,7 @@ export function AtomDevTools({ logSize = 50 }) {
             action: {
               functionName: mutationFn.name,
               payload: mutationPayload,
-              atomKey: atomRef.key
+              atomKey: atom.key
             },
             atomState: newState,
             timestamp: performance.now()

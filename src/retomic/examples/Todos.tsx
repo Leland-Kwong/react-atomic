@@ -1,9 +1,9 @@
 import React from 'react'
 import {
-  atomRef,
+  atom,
   useRead,
   useSend,
-  AtomRoot
+  RetomicRoot
 } from '../core'
 
 type Todo = { text: string; done: boolean; id: string }
@@ -12,7 +12,7 @@ interface TodoState {
   items: Todo[]
 }
 
-const todosRef = atomRef<TodoState>({
+const todosRef = atom<TodoState>({
   key: 'todos',
   defaultState: {
     items: [
@@ -76,10 +76,10 @@ export function Todos() {
   return (
     <div>
       <h1>Retomic Example</h1>
-      <AtomRoot>
+      <RetomicRoot>
         <TodosList />
         <AddTodo />
-      </AtomRoot>
+      </RetomicRoot>
     </div>
   )
 }

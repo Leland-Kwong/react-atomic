@@ -4,11 +4,11 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import {
-  atomRef,
+  atom,
   useIsNew,
   useRead,
   useSend,
-  AtomRoot
+  RetomicRoot
 } from '../dist'
 
 type $Hello = {
@@ -16,7 +16,7 @@ type $Hello = {
   showTimer: boolean
 }
 
-const helloRef = atomRef<$Hello>({
+const helloRef = atom<$Hello>({
   key: 'Hello',
   defaultState: {
     message: 'Hello world',
@@ -45,7 +45,7 @@ const toggleShowTimer = (s: $Hello, showTimer: boolean) =>
 
 type $Clock = number
 
-const timerRef = atomRef<$Clock>({
+const timerRef = atom<$Clock>({
   key: 'Clock',
   defaultState: 0
 })
@@ -141,11 +141,11 @@ const Home: NextPage = () => {
       <main>
         <h1>React Atomic</h1>
 
-        <AtomRoot>
+        <RetomicRoot>
           <MessageOnly />
           <AtomAppDemo />
           <AtomDevTools />
-        </AtomRoot>
+        </RetomicRoot>
       </main>
     </div>
   )

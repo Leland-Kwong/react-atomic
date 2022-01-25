@@ -1,8 +1,10 @@
-import type { AtomRef } from './types';
-export type { AtomRef } from './types';
+import type { Atom } from './types';
+export type { Atom } from './types';
 export { AtomDevTools } from './AtomDevTools';
-export { AtomRoot } from './AtomRoot';
-export declare function atomRef<T>({ key, defaultState, resetOnInactive }: AtomRef<T>): Readonly<AtomRef<T>>;
-export declare function useRead<T, SelectorValue = T>(atomRef: AtomRef<T>, selector: (state: T) => SelectorValue): SelectorValue;
-export declare function useSend<T>(atomRef: AtomRef<T>): <Payload>(mutationFn: (oldState: T, payload: Payload) => T, payload: Payload) => Promise<[void, void]>;
-export declare function useReset<T>(atomRef: AtomRef<T>): () => Promise<[void, void]>;
+export { RetomicRoot as AtomRoot } from './RetomicRoot';
+export { RetomicRoot } from './RetomicRoot';
+export declare function atom<T>({ key, defaultState, resetOnInactive }: Atom<T>): Readonly<Atom<T>>;
+export declare const atomRef: typeof atom;
+export declare function useRead<T, SelectorValue = T>(atom: Atom<T>, selector: (state: T) => SelectorValue): SelectorValue;
+export declare function useSend<T>(atom: Atom<T>): <Payload>(mutationFn: (oldState: T, payload: Payload) => T, payload: Payload) => Promise<[void, void]>;
+export declare function useReset<T>(atom: Atom<T>): () => Promise<[void, void]>;
