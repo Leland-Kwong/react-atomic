@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { RootContext } from './constants'
+import { RootContext } from './root-context'
 
 export function errorMsg(msg: string) {
   return `[retomic error]: ${msg}`

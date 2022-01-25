@@ -7,11 +7,11 @@ import type {
   LifeCycleEventData
 } from './types'
 import {
-  defaultContext,
   $$lifeCycleChannel,
   LIFECYCLE_MOUNT,
   LIFECYCLE_UNMOUNT
 } from './constants'
+import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
 const onLifeCycleDefaults = {
