@@ -1,7 +1,7 @@
 import React from 'react'
 import { makeDb } from './db'
 import type { ReactChild } from 'react'
-import { defaultContext, RootContext } from './constants'
+import { defaultContext, RootContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 import type { DbState } from './types'
 
