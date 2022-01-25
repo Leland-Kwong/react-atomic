@@ -12,7 +12,7 @@
   },
   "main": "dist/index.js",
   "scripts": {
-    "dev": "next dev",
+    "demo": "next dev",
     "build": "rm -rf ./dist && tsc --project ./tsconfig.publish.json",
     "bump:pre": "npm run build && git add . && git commit -m \"build latest\"",
     "bump:major": "npm run bump:pre && npm version major",
