@@ -27,7 +27,7 @@ export function atom<T>({
   key,
   defaultState,
   resetOnInactive = true
-}: Atom<T>): Readonly<Atom<T>> {
+}: Atom<T>): Atom<T> {
   return {
     key,
     defaultState,
