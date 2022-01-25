@@ -3,11 +3,11 @@ import { mutable } from './mutable'
 import { getState, setState } from './db'
 import type { Atom, Db, LifeCycleEventData } from './types'
 import {
-  defaultContext,
   $$lifeCycleChannel,
   LIFECYCLE_MOUNT,
   LIFECYCLE_UNMOUNT
 } from './constants'
+import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
 const onLifeCycleDefaults = {

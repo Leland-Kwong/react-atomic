@@ -9,7 +9,7 @@ import {
   useRead,
   useSend,
   RetomicRoot
-} from '../src/retomic'
+} from '../dist'
 
 type $Hello = {
   message: string
