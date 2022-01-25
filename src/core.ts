@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getState, setState } from './db'
-import { useLifecycle } from './lifecycle'
+import { useHookLifecycle } from './lifecycle'
 import type {
   Atom,
   SelectorFn,
@@ -22,6 +22,7 @@ export { AtomDevTools } from './AtomDevTools'
 // IMPORTANT: alias for backwards compatibility
 export { RetomicRoot as AtomRoot } from './RetomicRoot'
 export { RetomicRoot } from './RetomicRoot'
+export { useOnLifecycle } from './lifecycle'
 
 export function atom<T>({
   key,
@@ -69,7 +70,7 @@ export function useRead<T, SelectorValue = T>(
 
     return rootDb.subscriptions.on(key, watcherFn)
   }, [rootDb, key, selector, defaultState, atom])
-  useLifecycle(atom, 'read')
+  useHookLifecycle(atom, 'read')
 
   return hookState
 }
@@ -77,7 +78,7 @@ export function useRead<T, SelectorValue = T>(
 export function useSend<T>(atom: Atom<T>) {
   const rootDb = useDb()
 
-  useLifecycle(atom, 'send')
+  useHookLifecycle(atom, 'send')
   return useMemo(
     () =>
       <Payload>(

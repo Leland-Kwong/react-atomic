@@ -49,9 +49,13 @@ function isAtomActive<T>(db: Db<T>, atom: Atom<T>) {
   return db.activeHooks[atom.key] > 0
 }
 
-export function useLifecycle(
+/**
+ * Tracks hook info and triggers mount/unmount lifecycle
+ * events.
+ */
+export function useHookLifecycle(
   atom: Atom<any>,
-  hookType: keyof Db<any>['activeHooks']
+  hookType: 'read' | 'send'
 ) {
   const db = useDb()
   const hasRetomicRoot = db !== defaultContext
@@ -84,6 +88,10 @@ export function useLifecycle(
   useEffect(handleAtomLifecycleState, [db, atom, hookType])
 }
 
+/**
+ * @public
+ * A react hook for observing retomic lifecycle changes
+ */
 export function useOnLifecycle<T>(
   atom: Atom<T>,
   fn: (data: {
