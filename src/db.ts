@@ -1,5 +1,10 @@
 import Emittery from 'emittery'
-import { $$internal } from './constants'
+import {
+  $$lifeCycleChannel,
+  LIFECYCLE_STATE_CHANGE,
+  LIFECYCLE_MOUNT,
+  LIFECYCLE_UNMOUNT
+} from './constants'
 import type { Atom, Db } from './types'
 
 export function makeDb<T>(initialState: T): Db<T> {
@@ -13,7 +18,31 @@ export function makeDb<T>(initialState: T): Db<T> {
   }
 }
 
-export function setState<T>(
+function numListeners<T>(db: Db<T>, key: string) {
+  return db.subscriptions.listenerCount(key)
+}
+
+export function emitLifeCycleEvent<T>(
+  db: Db<T>,
+  atom: Atom<T>,
+  type:
+    | typeof LIFECYCLE_MOUNT
+    | typeof LIFECYCLE_UNMOUNT
+    | typeof LIFECYCLE_STATE_CHANGE
+): Promise<void> {
+  if (numListeners(db, $$lifeCycleChannel) === 0) {
+    return Promise.resolve()
+  }
+
+  return db.subscriptions.emit($$lifeCycleChannel, {
+    type,
+    key: atom.key,
+    state: getState(db),
+    activeHooks: { ...db.activeHooks }
+  })
+}
+
+export async function setState<T>(
   db: Db<T>,
   newState: T,
   atom: Atom<T>,
@@ -34,7 +63,7 @@ export function setState<T>(
 
   return Promise.all([
     db.subscriptions.emit(atom.key, eventData),
-    db.subscriptions.emit($$internal, eventData)
+    emitLifeCycleEvent(db, atom, LIFECYCLE_STATE_CHANGE)
   ])
 }
 

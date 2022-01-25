@@ -1,5 +1,9 @@
 import { useEffect, useMemo } from 'react'
-import { getState, setState } from './db'
+import {
+  emitLifeCycleEvent,
+  getState,
+  setState
+} from './db'
 import type { Atom, Db, LifeCycleEventData } from './types'
 import {
   $$lifeCycleChannel,
@@ -13,10 +17,6 @@ const onLifeCycleDefaults = {
   predicate<T>({ key }: LifeCycleEventData, atom: Atom<T>) {
     return key === atom.key
   }
-}
-
-function numListeners<T>(db: Db<T>, key: string) {
-  return db.subscriptions.listenerCount(key)
 }
 
 function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
@@ -47,24 +47,6 @@ function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
 
 function isAtomActive<T>(db: Db<T>, atom: Atom<T>) {
   return db.activeHooks[atom.key] > 0
-}
-
-function emitLifeCycleEvent<T>(
-  db: Db<T>,
-  atom: Atom<T>,
-  // TODO: add LIFECYCLE_STATE_CHANGE as a type as well
-  type: typeof LIFECYCLE_MOUNT | typeof LIFECYCLE_UNMOUNT
-) {
-  if (numListeners(db, $$lifeCycleChannel) === 0) {
-    return
-  }
-
-  db.subscriptions.emit($$lifeCycleChannel, {
-    type,
-    key: atom.key,
-    state: getState(db),
-    activeHooks: { ...db.activeHooks }
-  })
 }
 
 export function useLifeCycle(

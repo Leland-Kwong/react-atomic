@@ -1,11 +1,14 @@
 import Emittery from 'emittery'
 
-import { $$internal, $$lifeCycleChannel } from './constants'
+import {
+  LIFECYCLE_STATE_CHANGE,
+  $$lifeCycleChannel
+} from './constants'
 
 type Subscriptions<T> = Emittery<
   {
     [key: Atom<T>['key']]: WatcherEventData
-    [$$internal]: WatcherEventData
+    [LIFECYCLE_STATE_CHANGE]: WatcherEventData
   } & {
     [$$lifeCycleChannel]: LifeCycleEventData
   }

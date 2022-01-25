@@ -264,10 +264,26 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
+            [ref2.key]: 2
+          },
+          type: 'stateChange',
+          state: { [ref2.key]: 'bar' }
+        }
+      ],
+      [
+        {
+          activeHooks: {
             [ref2.key]: 1
           },
           type: 'unmount',
           state: { [ref2.key]: 'bar' }
+        }
+      ],
+      [
+        {
+          activeHooks: {},
+          type: 'stateChange',
+          state: {}
         }
       ],
       [
@@ -298,7 +314,7 @@ describe('lifecycle', () => {
 
     await act(async () => {
       const setTo = (_: string, newNum: string) => newNum
-      await result.current.sendAtom(setTo, '$$noReset')
+      await result.current.sendAtom(setTo, 'foo')
     })
     await cleanup()
 
@@ -314,10 +330,21 @@ describe('lifecycle', () => {
       ],
       [
         {
+          activeHooks: {
+            [atomNoAutoReset.key]: 1
+          },
+          type: 'stateChange',
+          state: {
+            [atomNoAutoReset.key]: 'foo'
+          }
+        }
+      ],
+      [
+        {
           activeHooks: {},
           type: 'unmount',
           state: {
-            [atomNoAutoReset.key]: '$$noReset'
+            [atomNoAutoReset.key]: 'foo'
           }
         }
       ]
