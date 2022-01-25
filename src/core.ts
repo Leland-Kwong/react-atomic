@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getState, setState } from './db'
 import { useLifeCycle } from './lifecycle'
-import { mutable } from './mutable'
 import type { Atom, WatcherFn } from './types'
 import { useDb } from './utils'
 
@@ -11,27 +10,6 @@ function defaultTo<T>(defaultValue: T, value: T) {
 
 function $$resetAtom<T>(_: T, defaultState: T) {
   return defaultState
-}
-
-function checkDuplicateAtomKey(key: Atom<any>['key']) {
-  const isDuplicateKey = mutable.atomsByKey.has(key)
-
-  if (isDuplicateKey) {
-    const duplicateKeyPrefix =
-      process.env.NODE_ENV === 'development'
-        ? '/@atomDuplicate'
-        : ''
-    const newKey = `${key}${duplicateKeyPrefix}/${mutable.duplicaKeyCount}`
-
-    mutable.duplicaKeyCount += 1
-    console.warn(
-      `Warning: duplicate atom key \`${key}\` detected. As a safety precaution a new key, \`${newKey}\`, was automatically generated.`
-    )
-
-    return newKey
-  }
-
-  return key
 }
 
 export type { Atom } from './types'
@@ -45,16 +23,11 @@ export function atom<T>({
   defaultState,
   resetOnInactive = true
 }: Atom<T>): Readonly<Atom<T>> {
-  const actualKey = checkDuplicateAtomKey(key)
-  const ref = {
-    key: actualKey,
+  return {
+    key,
     defaultState,
     resetOnInactive
   }
-
-  mutable.atomsByKey.set(actualKey, ref)
-
-  return ref
 }
 // IMPORTANT: for backwards compatibility
 export const atomRef = atom

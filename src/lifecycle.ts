@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react'
-import { mutable } from './mutable'
 import { getState, setState } from './db'
 import type { Atom, Db, LifeCycleEventData } from './types'
 import {
@@ -22,8 +21,6 @@ function numListeners<T>(db: Db<T>, key: string) {
 
 function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
   const { key, resetOnInactive } = atom
-
-  mutable.atomsByKey.delete(key)
 
   if (!resetOnInactive) {
     return
