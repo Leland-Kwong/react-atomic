@@ -1,14 +1,9 @@
-import {
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from 'react'
-import { RootContext } from './constants'
+import { useEffect, useMemo, useState } from 'react'
 import { getState, setState } from './db'
 import { useLifeCycle } from './lifecycle'
 import { mutable } from './mutable'
 import type { AtomRef, WatcherFn } from './types'
+import { useDb } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -40,21 +35,19 @@ function checkDuplicateAtomKey(key: AtomRef<any>['key']) {
 }
 
 export type { AtomRef } from './types'
-export { useIsNew } from './utils'
 export { AtomDevTools } from './AtomDevTools'
 export { AtomRoot } from './AtomRoot'
 
 export function atomRef<T>({
   key,
-  defaultState
-}: {
-  key: AtomRef<T>['key']
-  defaultState: AtomRef<T>['defaultState']
-}): Readonly<AtomRef<T>> {
+  defaultState,
+  resetOnInactive = true
+}: AtomRef<T>): Readonly<AtomRef<T>> {
   const actualKey = checkDuplicateAtomKey(key)
   const ref = {
     key: actualKey,
-    defaultState
+    defaultState,
+    resetOnInactive
   }
 
   mutable.atomRefsByKey.set(actualKey, ref)
@@ -67,19 +60,23 @@ export function useRead<T, SelectorValue = T>(
   selector: (state: T) => SelectorValue
 ) {
   const { key, defaultState } = atomRef
-  const rootDb = useContext(RootContext)
+  const rootDb = useDb()
   const initialStateSlice = getState(rootDb)[key]
   const [hookState, setHookState] = useState(
     selector(defaultTo(defaultState, initialStateSlice))
   )
 
   useEffect(() => {
-    const watcherFn: WatcherFn = ({ newState }) => {
+    const watcherFn: WatcherFn = ({
+      oldState,
+      newState
+    }) => {
+      const prev = oldState[key]
       const stateSlice = newState[key]
       const nextValue = selector(
         defaultTo(defaultState, stateSlice)
       )
-      const hasChanged = hookState !== nextValue
+      const hasChanged = prev !== nextValue
 
       if (!hasChanged) {
         return
@@ -89,24 +86,16 @@ export function useRead<T, SelectorValue = T>(
     }
 
     return rootDb.subscriptions.on(key, watcherFn)
-  }, [
-    rootDb,
-    key,
-    hookState,
-    selector,
-    defaultState,
-    atomRef
-  ])
-  useLifeCycle(rootDb, atomRef)
+  }, [rootDb, key, selector, defaultState, atomRef])
+  useLifeCycle(atomRef, 'read')
 
   return hookState
 }
 
 export function useSend<T>(atomRef: AtomRef<T>) {
-  const { key, defaultState } = atomRef
-  const rootDb = useContext(RootContext)
+  const rootDb = useDb()
 
-  useLifeCycle(rootDb, atomRef)
+  useLifeCycle(atomRef, 'send')
   return useMemo(
     () =>
       <Payload>(
@@ -123,6 +112,7 @@ export function useSend<T>(atomRef: AtomRef<T>) {
           )
         }
 
+        const { key, defaultState } = atomRef
         const rootState = getState(rootDb)
         const stateSlice = defaultTo(
           defaultState,
@@ -141,7 +131,7 @@ export function useSend<T>(atomRef: AtomRef<T>) {
           payload
         )
       },
-    [defaultState, rootDb, key, atomRef]
+    [rootDb, atomRef]
   )
 }
 

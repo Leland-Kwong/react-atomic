@@ -1,16 +1,10 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   noop,
-  RootContext,
   $$internal,
-  $$lifeCycleChannel,
-  LIFECYCLE_MOUNT
+  $$lifeCycleChannel
 } from './constants'
+import { useDb } from './utils'
 import {
   AtomObserverProps,
   DevToolsLogEntry,
@@ -21,26 +15,13 @@ function AtomObserver({
   onChange,
   onLifeCycle = noop
 }: AtomObserverProps) {
-  const rootDb = useContext(RootContext)
+  const rootDb = useDb()
 
   useEffect(() => {
     const onLifeCycleWrapper = (
       data: LifeCycleEventData
     ) => {
-      const refKeys = Array.from(
-        rootDb.activeRefKeys.values()
-      )
-      const activeHooks = Object.fromEntries(
-        refKeys.map((key) => [
-          key,
-          rootDb.subscriptions.listenerCount(key)
-        ])
-      )
-
-      onLifeCycle({
-        ...data,
-        activeHooks
-      })
+      onLifeCycle(data)
     }
 
     const subscriptions = [
@@ -50,11 +31,6 @@ function AtomObserver({
         onLifeCycleWrapper
       )
     ]
-
-    rootDb.subscriptions.emit($$lifeCycleChannel, {
-      type: LIFECYCLE_MOUNT,
-      key: $$lifeCycleChannel
-    })
 
     return () => {
       subscriptions.forEach((unsubscribe) => unsubscribe())

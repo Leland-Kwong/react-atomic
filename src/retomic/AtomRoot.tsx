@@ -1,9 +1,8 @@
 import React from 'react'
 import { makeDb } from './db'
 import type { ReactChild } from 'react'
-import { useContext } from 'react'
 import { defaultContext, RootContext } from './constants'
-import { errorMsg } from './utils'
+import { errorMsg, useDb } from './utils'
 import type { DbState } from './types'
 
 export function AtomRoot({
@@ -11,8 +10,8 @@ export function AtomRoot({
 }: {
   children: ReactChild | ReactChild[]
 }) {
-  const rootDb = useContext(RootContext)
-  const isNestedAtomRoot = rootDb !== defaultContext
+  const currentDb = useDb()
+  const isNestedAtomRoot = currentDb !== defaultContext
 
   if (isNestedAtomRoot) {
     throw new Error(

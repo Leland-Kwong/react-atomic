@@ -11,7 +11,7 @@ function makeDb(initialState) {
     return {
         state: initialState,
         subscriptions: subscriptions,
-        activeRefKeys: new Set()
+        activeHooks: {}
     };
 }
 exports.makeDb = makeDb;

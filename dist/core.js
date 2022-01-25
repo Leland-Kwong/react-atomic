@@ -11,12 +11,12 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useReset = exports.useSend = exports.useRead = exports.atomRef = exports.AtomRoot = exports.AtomDevTools = exports.useIsNew = void 0;
+exports.useReset = exports.useSend = exports.useRead = exports.atomRef = exports.AtomRoot = exports.AtomDevTools = void 0;
 var react_1 = require("react");
-var constants_1 = require("./constants");
 var db_1 = require("./db");
 var lifecycle_1 = require("./lifecycle");
 var mutable_1 = require("./mutable");
+var utils_1 = require("./utils");
 function defaultTo(defaultValue, value) {
     return value === undefined ? defaultValue : value;
 }
@@ -36,18 +36,17 @@ function checkDuplicateAtomKey(key) {
     }
     return key;
 }
-var utils_1 = require("./utils");
-Object.defineProperty(exports, "useIsNew", { enumerable: true, get: function () { return utils_1.useIsNew; } });
 var AtomDevTools_1 = require("./AtomDevTools");
 Object.defineProperty(exports, "AtomDevTools", { enumerable: true, get: function () { return AtomDevTools_1.AtomDevTools; } });
 var AtomRoot_1 = require("./AtomRoot");
 Object.defineProperty(exports, "AtomRoot", { enumerable: true, get: function () { return AtomRoot_1.AtomRoot; } });
 function atomRef(_a) {
-    var key = _a.key, defaultState = _a.defaultState;
+    var key = _a.key, defaultState = _a.defaultState, _b = _a.resetOnInactive, resetOnInactive = _b === void 0 ? true : _b;
     var actualKey = checkDuplicateAtomKey(key);
     var ref = {
         key: actualKey,
-        defaultState: defaultState
+        defaultState: defaultState,
+        resetOnInactive: resetOnInactive
     };
     mutable_1.mutable.atomRefsByKey.set(actualKey, ref);
     return ref;
@@ -55,37 +54,30 @@ function atomRef(_a) {
 exports.atomRef = atomRef;
 function useRead(atomRef, selector) {
     var key = atomRef.key, defaultState = atomRef.defaultState;
-    var rootDb = (0, react_1.useContext)(constants_1.RootContext);
+    var rootDb = (0, utils_1.useDb)();
     var initialStateSlice = (0, db_1.getState)(rootDb)[key];
     var _a = (0, react_1.useState)(selector(defaultTo(defaultState, initialStateSlice))), hookState = _a[0], setHookState = _a[1];
     (0, react_1.useEffect)(function () {
         var watcherFn = function (_a) {
-            var newState = _a.newState;
+            var oldState = _a.oldState, newState = _a.newState;
+            var prev = oldState[key];
             var stateSlice = newState[key];
             var nextValue = selector(defaultTo(defaultState, stateSlice));
-            var hasChanged = hookState !== nextValue;
+            var hasChanged = prev !== nextValue;
             if (!hasChanged) {
                 return;
             }
             setHookState(nextValue);
         };
         return rootDb.subscriptions.on(key, watcherFn);
-    }, [
-        rootDb,
-        key,
-        hookState,
-        selector,
-        defaultState,
-        atomRef
-    ]);
-    (0, lifecycle_1.useLifeCycle)(rootDb, atomRef);
+    }, [rootDb, key, selector, defaultState, atomRef]);
+    (0, lifecycle_1.useLifeCycle)(atomRef, 'read');
     return hookState;
 }
 exports.useRead = useRead;
 function useSend(atomRef) {
-    var key = atomRef.key, defaultState = atomRef.defaultState;
-    var rootDb = (0, react_1.useContext)(constants_1.RootContext);
-    (0, lifecycle_1.useLifeCycle)(rootDb, atomRef);
+    var rootDb = (0, utils_1.useDb)();
+    (0, lifecycle_1.useLifeCycle)(atomRef, 'send');
     return (0, react_1.useMemo)(function () {
         return function (mutationFn, payload) {
             var _a;
@@ -93,12 +85,13 @@ function useSend(atomRef) {
                 !mutationFn.name) {
                 console.error('Warning: This mutation function should be named -', mutationFn);
             }
+            var key = atomRef.key, defaultState = atomRef.defaultState;
             var rootState = (0, db_1.getState)(rootDb);
             var stateSlice = defaultTo(defaultState, rootState[key]);
             var nextState = __assign(__assign({}, rootState), (_a = {}, _a[key] = mutationFn(stateSlice, payload), _a));
             return (0, db_1.setState)(rootDb, nextState, atomRef, mutationFn, payload);
         };
-    }, [defaultState, rootDb, key, atomRef]);
+    }, [rootDb, atomRef]);
 }
 exports.useSend = useSend;
 function useReset(atomRef) {
