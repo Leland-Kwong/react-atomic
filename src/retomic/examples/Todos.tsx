@@ -1,6 +1,6 @@
 import React from 'react'
 import {
-  atomRef,
+  atom,
   useRead,
   useSend,
   RetomicRoot
@@ -12,7 +12,7 @@ interface TodoState {
   items: Todo[]
 }
 
-const todosRef = atomRef<TodoState>({
+const todosRef = atom<TodoState>({
   key: 'todos',
   defaultState: {
     items: [

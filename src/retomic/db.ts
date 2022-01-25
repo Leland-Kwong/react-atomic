@@ -1,6 +1,6 @@
 import Emittery from 'emittery'
 import { $$internal } from './constants'
-import type { AtomRef, Db } from './types'
+import type { Atom, Db } from './types'
 
 export function makeDb<T>(initialState: T): Db<T> {
   const subscriptions: Db<T>['subscriptions'] =
@@ -16,7 +16,7 @@ export function makeDb<T>(initialState: T): Db<T> {
 export function setState<T>(
   db: Db<T>,
   newState: T,
-  atomRef: AtomRef<T>,
+  atom: Atom<T>,
   mutationFn: Function,
   mutationPayload: any
 ) {
@@ -24,7 +24,7 @@ export function setState<T>(
   const eventData = {
     oldState,
     newState,
-    atomRef,
+    atom,
     mutationFn,
     mutationPayload,
     db
@@ -33,7 +33,7 @@ export function setState<T>(
   db.state = newState
 
   return Promise.all([
-    db.subscriptions.emit(atomRef.key, eventData),
+    db.subscriptions.emit(atom.key, eventData),
     db.subscriptions.emit($$internal, eventData)
   ])
 }

@@ -5,7 +5,7 @@ import {
   cleanup
 } from '@testing-library/react-hooks'
 import {
-  atomRef,
+  atom,
   useRead,
   useReset,
   useSend,
@@ -24,17 +24,17 @@ const setTestState = (s: State, text: string) => ({
 })
 const setTestState2 = (_: State2, newText: string) =>
   newText
-const ref = atomRef<State>({
+const ref = atom<State>({
   key: 'test',
   defaultState: {
     text: 'foo'
   }
 })
-const ref2 = atomRef<State2>({
+const ref2 = atom<State2>({
   key: 'test2',
   defaultState: 'foo2'
 })
-const atomNoAutoReset = atomRef({
+const atomNoAutoReset = atom({
   key: 'atomNoAutoReset',
   defaultState: '',
   resetOnInactive: false

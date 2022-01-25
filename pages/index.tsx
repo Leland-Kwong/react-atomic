@@ -4,7 +4,7 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import {
-  atomRef,
+  atom,
   useIsNew,
   useRead,
   useSend,
@@ -16,7 +16,7 @@ type $Hello = {
   showTimer: boolean
 }
 
-const helloRef = atomRef<$Hello>({
+const helloRef = atom<$Hello>({
   key: 'Hello',
   defaultState: {
     message: 'Hello world',
@@ -45,7 +45,7 @@ const toggleShowTimer = (s: $Hello, showTimer: boolean) =>
 
 type $Clock = number
 
-const timerRef = atomRef<$Clock>({
+const timerRef = atom<$Clock>({
   key: 'Clock',
   defaultState: 0
 })

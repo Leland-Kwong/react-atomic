@@ -1,9 +1,6 @@
-import type { AtomRef } from './types'
+import type { Atom } from './types'
 
 export const mutable = {
   duplicaKeyCount: 0,
-  atomRefsByKey: new Map<
-    AtomRef<any>['key'],
-    AtomRef<any>
-  >()
+  atomsByKey: new Map<Atom<any>['key'], Atom<any>>()
 }
