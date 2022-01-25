@@ -1,15 +1,10 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   noop,
-  RootContext,
   $$internal,
   $$lifeCycleChannel
 } from './constants'
+import { useDb } from './utils'
 import {
   AtomObserverProps,
   DevToolsLogEntry,
@@ -20,7 +15,7 @@ function AtomObserver({
   onChange,
   onLifeCycle = noop
 }: AtomObserverProps) {
-  const rootDb = useContext(RootContext)
+  const rootDb = useDb()
 
   useEffect(() => {
     const onLifeCycleWrapper = (

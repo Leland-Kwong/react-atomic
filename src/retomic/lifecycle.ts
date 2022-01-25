@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { mutable } from './mutable'
 import { getState, setState } from './db'
 import type {
@@ -8,12 +8,11 @@ import type {
 } from './types'
 import {
   defaultContext,
-  RootContext,
   $$lifeCycleChannel,
   LIFECYCLE_MOUNT,
   LIFECYCLE_UNMOUNT
 } from './constants'
-import { errorMsg } from './utils'
+import { errorMsg, useDb } from './utils'
 
 const onLifeCycleDefaults = {
   predicate<T>(
@@ -54,10 +53,6 @@ function cleanupRef<T>(db: Db<T>, atomRef: AtomRef<T>) {
     $$removeInactiveKey,
     undefined
   )
-}
-
-function useDb() {
-  return useContext(RootContext)
 }
 
 function isAtomActive<T>(db: Db<T>, atomRef: AtomRef<T>) {
