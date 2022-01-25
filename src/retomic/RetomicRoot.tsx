@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { makeDb } from './db'
 import type { ReactChild } from 'react'
 import { defaultContext, RootContext } from './root-context'
@@ -21,7 +21,7 @@ export function RetomicRoot({
     )
   }
 
-  const db = makeDb<DbState>({})
+  const db = useMemo(() => makeDb<DbState>({}), [])
 
   return (
     <RootContext.Provider value={db}>
