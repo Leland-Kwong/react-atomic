@@ -42,26 +42,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AtomDevTools = void 0;
 var react_1 = __importStar(require("react"));
 var constants_1 = require("./constants");
+var utils_1 = require("./utils");
 function AtomObserver(_a) {
     var onChange = _a.onChange, _b = _a.onLifeCycle, onLifeCycle = _b === void 0 ? constants_1.noop : _b;
-    var rootDb = (0, react_1.useContext)(constants_1.RootContext);
+    var rootDb = (0, utils_1.useDb)();
     (0, react_1.useEffect)(function () {
         var onLifeCycleWrapper = function (data) {
-            var refKeys = Array.from(rootDb.activeRefKeys.values());
-            var activeHooks = Object.fromEntries(refKeys.map(function (key) { return [
-                key,
-                rootDb.subscriptions.listenerCount(key)
-            ]; }));
-            onLifeCycle(__assign(__assign({}, data), { activeHooks: activeHooks }));
+            onLifeCycle(data);
         };
         var subscriptions = [
             rootDb.subscriptions.on(constants_1.$$internal, onChange),
             rootDb.subscriptions.on(constants_1.$$lifeCycleChannel, onLifeCycleWrapper)
         ];
-        rootDb.subscriptions.emit(constants_1.$$lifeCycleChannel, {
-            type: constants_1.LIFECYCLE_MOUNT,
-            key: constants_1.$$lifeCycleChannel
-        });
         return function () {
             subscriptions.forEach(function (unsubscribe) { return unsubscribe(); });
         };
