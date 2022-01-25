@@ -27,6 +27,7 @@ var react_1 = require("react");
 var mutable_1 = require("./mutable");
 var db_1 = require("./db");
 var constants_1 = require("./constants");
+var root_context_1 = require("./root-context");
 var utils_1 = require("./utils");
 var onLifeCycleDefaults = {
     predicate: function (_a, atomRef) {
@@ -72,7 +73,7 @@ type) {
 }
 function useLifeCycle(atomRef, hookType) {
     var db = (0, utils_1.useDb)();
-    var hasAtomRoot = db !== constants_1.defaultContext;
+    var hasAtomRoot = db !== root_context_1.defaultContext;
     if (!hasAtomRoot) {
         throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `AtomRoot` component'));
     }
