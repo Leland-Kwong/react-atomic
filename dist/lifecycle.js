@@ -30,17 +30,17 @@ var constants_1 = require("./constants");
 var root_context_1 = require("./root-context");
 var utils_1 = require("./utils");
 var onLifeCycleDefaults = {
-    predicate: function (_a, atomRef) {
+    predicate: function (_a, atom) {
         var key = _a.key;
-        return key === atomRef.key;
+        return key === atom.key;
     }
 };
 function numListeners(db, key) {
     return db.subscriptions.listenerCount(key);
 }
-function cleanupRef(db, atomRef) {
-    var key = atomRef.key, resetOnInactive = atomRef.resetOnInactive;
-    mutable_1.mutable.atomRefsByKey.delete(key);
+function cleanupRef(db, atom) {
+    var key = atom.key, resetOnInactive = atom.resetOnInactive;
+    mutable_1.mutable.atomsByKey.delete(key);
     if (!resetOnInactive) {
         return;
     }
@@ -53,12 +53,12 @@ function cleanupRef(db, atomRef) {
     _omitted = _a[_b], newStateWithoutRef = __rest(_a, [typeof _b === "symbol" ? _b : _b + ""]);
     // dummy named function for debugging context
     function $$removeInactiveKey() { }
-    return (0, db_1.setState)(db, newStateWithoutRef, atomRef, $$removeInactiveKey, undefined);
+    return (0, db_1.setState)(db, newStateWithoutRef, atom, $$removeInactiveKey, undefined);
 }
-function isAtomActive(db, atomRef) {
-    return db.activeHooks[atomRef.key] > 0;
+function isAtomActive(db, atom) {
+    return db.activeHooks[atom.key] > 0;
 }
-function emitLifeCycleEvent(db, atomRef, 
+function emitLifeCycleEvent(db, atom, 
 // TODO: add LIFECYCLE_STATE_CHANGE as a type as well
 type) {
     if (numListeners(db, constants_1.$$lifeCycleChannel) === 0) {
@@ -66,44 +66,40 @@ type) {
     }
     db.subscriptions.emit(constants_1.$$lifeCycleChannel, {
         type: type,
-        key: atomRef.key,
+        key: atom.key,
         state: (0, db_1.getState)(db),
         activeHooks: __assign({}, db.activeHooks)
     });
 }
-function useLifeCycle(atomRef, hookType) {
+function useLifeCycle(atom, hookType) {
     var db = (0, utils_1.useDb)();
-    var hasAtomRoot = db !== root_context_1.defaultContext;
-    if (!hasAtomRoot) {
-        throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `AtomRoot` component'));
+    var hasRetomicRoot = db !== root_context_1.defaultContext;
+    if (!hasRetomicRoot) {
+        throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `RetomicRoot` component'));
     }
     var handleAtomLifeCycleState = function () {
-        db.activeHooks[atomRef.key] =
-            (db.activeHooks[atomRef.key] || 0) + 1;
-        emitLifeCycleEvent(db, atomRef, constants_1.LIFECYCLE_MOUNT);
+        db.activeHooks[atom.key] =
+            (db.activeHooks[atom.key] || 0) + 1;
+        emitLifeCycleEvent(db, atom, constants_1.LIFECYCLE_MOUNT);
         return function () {
-            db.activeHooks[atomRef.key] -= 1;
-            if (!isAtomActive(db, atomRef)) {
-                delete db.activeHooks[atomRef.key];
-                cleanupRef(db, atomRef);
+            db.activeHooks[atom.key] -= 1;
+            if (!isAtomActive(db, atom)) {
+                delete db.activeHooks[atom.key];
+                cleanupRef(db, atom);
             }
-            emitLifeCycleEvent(db, atomRef, constants_1.LIFECYCLE_UNMOUNT);
+            emitLifeCycleEvent(db, atom, constants_1.LIFECYCLE_UNMOUNT);
         };
     };
-    (0, react_1.useEffect)(handleAtomLifeCycleState, [
-        db,
-        atomRef,
-        hookType
-    ]);
+    (0, react_1.useEffect)(handleAtomLifeCycleState, [db, atom, hookType]);
 }
 exports.useLifeCycle = useLifeCycle;
-function useOnLifeCycle(atomRef, fn, predicate) {
+function useOnLifeCycle(atom, fn, predicate) {
     if (predicate === void 0) { predicate = onLifeCycleDefaults.predicate; }
     var db = (0, utils_1.useDb)();
     var unsubscribe = (0, react_1.useMemo)(function () {
         return db.subscriptions.on(constants_1.$$lifeCycleChannel, function (data) {
             var type = data.type, state = data.state, activeHooks = data.activeHooks;
-            if (!predicate(data, atomRef)) {
+            if (!predicate(data, atom)) {
                 return;
             }
             fn({
@@ -112,7 +108,7 @@ function useOnLifeCycle(atomRef, fn, predicate) {
                 state: state
             });
         });
-    }, [db, fn, predicate, atomRef]);
+    }, [db, fn, predicate, atom]);
     return unsubscribe;
 }
 exports.useOnLifeCycle = useOnLifeCycle;

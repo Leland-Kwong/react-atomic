@@ -15,19 +15,19 @@ function makeDb(initialState) {
     };
 }
 exports.makeDb = makeDb;
-function setState(db, newState, atomRef, mutationFn, mutationPayload) {
+function setState(db, newState, atom, mutationFn, mutationPayload) {
     var oldState = db.state;
     var eventData = {
         oldState: oldState,
         newState: newState,
-        atomRef: atomRef,
+        atom: atom,
         mutationFn: mutationFn,
         mutationPayload: mutationPayload,
         db: db
     };
     db.state = newState;
     return Promise.all([
-        db.subscriptions.emit(atomRef.key, eventData),
+        db.subscriptions.emit(atom.key, eventData),
         db.subscriptions.emit(constants_1.$$internal, eventData)
     ]);
 }
