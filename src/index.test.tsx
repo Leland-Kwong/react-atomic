@@ -68,6 +68,30 @@ describe('core', () => {
       rerender({ selector: sliceText(3) })
       expect(result.current).toBe('foo')
     })
+
+    test('only updates when change matches atom key', () => {
+      const selector1 = jest.fn()
+      const selector2 = jest.fn()
+      const { result } = renderHook(
+        () => {
+          const val1 = useRead(ref, selector1)
+          const val2 = useRead(ref2, selector2)
+          const send1 = useSend(ref)
+
+          return { val1, val2, send1 }
+        },
+        { wrapper }
+      )
+
+      act(() => {
+        const setText = (_: State, text: string) => ({
+          text
+        })
+        result.current.send1(setText, 'bar')
+      })
+      expect(selector1.mock.calls.length).toBe(2)
+      expect(selector2.mock.calls.length).toBe(1)
+    })
   })
 
   test('useSend', () => {

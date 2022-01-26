@@ -79,8 +79,15 @@ export function useRead<T, SelectorValue = T>(
 
     const watcherFn: WatcherFn = ({
       oldState,
-      newState
+      newState,
+      atom: initiatedBy
     }) => {
+      const shouldUpdate = initiatedBy.key === key
+
+      if (!shouldUpdate) {
+        return
+      }
+
       const prev = oldState[key]
       const next = selectorRef.current(
         defaultTo(defaultState, newState[key])
