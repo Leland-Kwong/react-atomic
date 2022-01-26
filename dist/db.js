@@ -66,10 +66,10 @@ function numListeners(db, key) {
     return db.subscriptions.listenerCount(key);
 }
 function emitLifecycleEvent(db, atom, type) {
-    if (numListeners(db, constants_1.$$lifeCycleChannel) === 0) {
+    if (numListeners(db, constants_1.$$lifecycleChannel) === 0) {
         return Promise.resolve();
     }
-    return db.subscriptions.emit(constants_1.$$lifeCycleChannel, {
+    return db.subscriptions.emit(constants_1.$$lifecycleChannel, {
         type: type,
         key: atom.key,
         state: getState(db),

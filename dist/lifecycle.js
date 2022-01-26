@@ -18,9 +18,8 @@ var constants_1 = require("./constants");
 var root_context_1 = require("./root-context");
 var utils_1 = require("./utils");
 var onLifecycleDefaults = {
-    predicate: function (_a, atom) {
-        var key = _a.key;
-        return key === atom.key;
+    predicate: function () {
+        return true;
     }
 };
 function cleanupRef(db, atom) {
@@ -72,22 +71,17 @@ exports.useHookLifecycle = useHookLifecycle;
  * @public
  * A react hook for observing retomic lifecycle changes
  */
-function useOnLifecycle(atom, fn, predicate) {
+function useOnLifecycle(fn, predicate) {
     if (predicate === void 0) { predicate = onLifecycleDefaults.predicate; }
     var db = (0, utils_1.useDb)();
-    var unsubscribe = (0, react_1.useMemo)(function () {
-        return db.subscriptions.on(constants_1.$$lifeCycleChannel, function (data) {
-            var type = data.type, state = data.state, activeHooks = data.activeHooks;
-            if (!predicate(data, atom)) {
+    (0, react_1.useEffect)(function () {
+        var unsubscribe = db.subscriptions.on(constants_1.$$lifecycleChannel, function (data) {
+            if (!predicate(data)) {
                 return;
             }
-            fn({
-                type: type,
-                activeHooks: activeHooks,
-                state: state
-            });
+            fn(data);
         });
-    }, [db, fn, predicate, atom]);
-    return unsubscribe;
+        return unsubscribe;
+    }, [db, fn, predicate]);
 }
 exports.useOnLifecycle = useOnLifecycle;

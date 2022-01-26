@@ -1,10 +1,10 @@
 import Emittery from 'emittery';
-import { lifecycleStateChange, $$lifeCycleChannel } from './constants';
+import { lifecycleStateChange, $$lifecycleChannel } from './constants';
 declare type Subscriptions<T> = Emittery<{
     [key: Atom<T>['key']]: WatcherEventData;
     [lifecycleStateChange]: WatcherEventData;
 } & {
-    [$$lifeCycleChannel]: LifecycleEventData;
+    [$$lifecycleChannel]: LifecycleEventData;
 }>;
 export interface DbState {
     [key: string]: any;

@@ -52,7 +52,7 @@ function AtomObserver(_a) {
         };
         var subscriptions = [
             rootDb.subscriptions.on(constants_1.lifecycleStateChange, onChange),
-            rootDb.subscriptions.on(constants_1.$$lifeCycleChannel, onLifecycleWrapper)
+            rootDb.subscriptions.on(constants_1.$$lifecycleChannel, onLifecycleWrapper)
         ];
         return function () {
             subscriptions.forEach(function (unsubscribe) { return unsubscribe(); });
