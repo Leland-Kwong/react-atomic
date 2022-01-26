@@ -23,7 +23,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "emittery": "^0.10.0",
     "react-json-view": "^1.21.3"
   },
   "peerDependencies": {
