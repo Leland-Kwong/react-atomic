@@ -28,7 +28,6 @@ function $$resetAtom<T>(_: T, defaultState: T) {
 }
 
 export type { Atom, SelectorFn, UpdateFn } from './types'
-export { AtomDevTools } from './AtomDevTools'
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
