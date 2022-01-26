@@ -18,7 +18,7 @@ export interface Db {
     id: string;
 }
 export declare type LifecycleFn = (data: LifecycleEventData) => void;
-interface WatcherEventData {
+export interface WatcherEventData {
     oldState: DbState;
     newState: DbState;
     atom: Atom<any>;
@@ -54,4 +54,3 @@ export interface Atom<T> {
 }
 export declare type SelectorFn<State, SelectorValue> = (state: State) => SelectorValue;
 export declare type UpdateFn<State, Payload> = (state: State, payload: Payload) => State;
-export {};
