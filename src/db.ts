@@ -1,6 +1,6 @@
 import Emittery from 'emittery'
+import { channel, emit, subscriberCount } from './channels'
 import {
-  $$lifecycleChannel,
   lifecycleStateChange,
   lifecycleMount,
   lifecycleUnmount
@@ -14,13 +14,10 @@ export function makeDb<T>(initialState: T): Db<T> {
   return {
     state: initialState,
     subscriptions,
+    lifecycleChannel: channel(),
     activeHooks: {},
     id: (Math.random() * 1000).toString(32)
   }
-}
-
-function numListeners<T>(db: Db<T>, key: string) {
-  return db.subscriptions.listenerCount(key)
 }
 
 export function emitLifecycleEvent<T>(
@@ -30,12 +27,12 @@ export function emitLifecycleEvent<T>(
     | typeof lifecycleMount
     | typeof lifecycleUnmount
     | typeof lifecycleStateChange
-): Promise<void> {
-  if (numListeners(db, $$lifecycleChannel) === 0) {
-    return Promise.resolve()
+) {
+  if (subscriberCount(db.lifecycleChannel) === 0) {
+    return
   }
 
-  return db.subscriptions.emit($$lifecycleChannel, {
+  emit(db.lifecycleChannel, {
     type,
     key: atom.key,
     state: getState(db),

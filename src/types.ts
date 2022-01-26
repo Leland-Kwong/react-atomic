@@ -1,31 +1,15 @@
 import Emittery from 'emittery'
+import { Channel } from './channels'
 
-import {
-  lifecycleStateChange,
-  $$lifecycleChannel
-} from './constants'
+import { lifecycleStateChange } from './constants'
 
-type Subscriptions<T> = Emittery<
-  {
-    [key: Atom<T>['key']]: WatcherEventData
-    [lifecycleStateChange]: WatcherEventData
-  } & {
-    [$$lifecycleChannel]: LifecycleEventData
-  }
->
+type Subscriptions<T> = Emittery<{
+  [key: Atom<T>['key']]: WatcherEventData
+  [lifecycleStateChange]: WatcherEventData
+}>
 
 export interface DbState {
   [key: string]: any
-}
-
-export interface Db<T> {
-  state: Readonly<DbState>
-  subscriptions: Subscriptions<T>
-  // hook counts
-  activeHooks: {
-    [atomKey: string]: number
-  }
-  id: string
 }
 
 export interface LifecycleEventData {
@@ -33,6 +17,17 @@ export interface LifecycleEventData {
   key: Atom<any>['key']
   state: Db<any>['state']
   activeHooks: Readonly<Db<any>['activeHooks']>
+}
+
+export interface Db<T> {
+  state: Readonly<DbState>
+  subscriptions: Subscriptions<T>
+  lifecycleChannel: Channel<LifecycleEventData>
+  // hook counts
+  activeHooks: {
+    [atomKey: string]: number
+  }
+  id: string
 }
 
 export type LifecycleFn = (data: LifecycleEventData) => void

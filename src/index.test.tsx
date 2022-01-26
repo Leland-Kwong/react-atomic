@@ -231,7 +231,7 @@ describe('lifecycle', () => {
   }) => (
     <RetomicRoot>
       {/* We need to render the lifecycle hook separately so
-      we it can capture the child hooks' unmount events otherwise
+      it can capture the child hooks' unmount events otherwise
       it will unmount before they happen. */}
       <Lifecycle />
       {!done && children}
@@ -245,7 +245,7 @@ describe('lifecycle', () => {
       useOnLifecycle(onLifecycle)
       return null
     }
-    const { result, rerender, waitFor } = renderHook(
+    const { result, rerender } = renderHook(
       () => {
         return {
           readValue: useRead(ref2, identity),
@@ -268,9 +268,6 @@ describe('lifecycle', () => {
       done: true,
       Lifecycle
     })
-    // the event emitter we're using is async, so we need to
-    // give the lifecycle events time to finish broadcasting
-    await waitFor(() => true, { timeout: 100 })
 
     expect(onLifecycle.mock.calls).toEqual([
       [
@@ -343,7 +340,7 @@ describe('lifecycle', () => {
       useOnLifecycle(onLifecycle)
       return null
     }
-    const { result, rerender, waitFor } = renderHook(
+    const { result, rerender } = renderHook(
       () => {
         return {
           sendAtom: useSend(atomToTest)
@@ -366,9 +363,6 @@ describe('lifecycle', () => {
       done: true,
       Lifecycle
     })
-    // the event emitter we're using is async, so we need to
-    // give the lifecycle events time to finish broadcasting
-    await waitFor(() => true, { timeout: 100 })
 
     expect(onLifecycle.mock.calls).toEqual([
       [

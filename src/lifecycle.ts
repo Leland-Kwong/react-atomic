@@ -6,10 +6,10 @@ import {
 } from './db'
 import type { Atom, Db, LifecycleEventData } from './types'
 import {
-  $$lifecycleChannel,
   lifecycleMount,
   lifecycleUnmount
 } from './constants'
+import { subscribe, unsubscribe } from './channels'
 import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
@@ -105,17 +105,14 @@ export function useOnLifecycle<T>(
   const db = useDb()
 
   useEffect(() => {
-    const unsubscribe = db.subscriptions.on(
-      $$lifecycleChannel,
-      (data) => {
-        if (!predicate(data)) {
-          return
-        }
-
-        fn(data)
+    const id = subscribe(db.lifecycleChannel, (data) => {
+      if (!predicate(data)) {
+        return
       }
-    )
 
-    return unsubscribe
+      fn(data)
+    })
+
+    return () => unsubscribe(db.lifecycleChannel, id)
   }, [db, fn, predicate])
 }
