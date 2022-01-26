@@ -53,7 +53,6 @@ export function useRead<T, SelectorValue = T>(
 ): SelectorValue {
   const { key, defaultState } = atom
   const db = useDb()
-  const initialStateSlice = getState(db)[key]
   const [, update] = useReducer(updateReadReducer, 0)
   const selectorValue = useRef(
     undefined as unknown as SelectorValue
@@ -64,15 +63,18 @@ export function useRead<T, SelectorValue = T>(
   const isNewSelector = selectorRef.current !== selector
 
   if (isNewSelector) {
+    const stateSlice = getState(db)[key]
+
     selectorValue.current = selector(
-      defaultTo(defaultState, initialStateSlice)
+      defaultTo(defaultState, stateSlice)
     )
+    /**
+     * IMPORTANT
+     * Update the selector in case it changes between renders.
+     */
+    selectorRef.current = selector
   }
-  /**
-   * IMPORTANT
-   * Update the selector in case it changes between renders.
-   */
-  selectorRef.current = selector
+
   useEffect(() => {
     hookLifecycle(db, atom, lifecycleMount)
 
@@ -81,17 +83,16 @@ export function useRead<T, SelectorValue = T>(
       newState
     }) => {
       const prev = oldState[key]
-      const stateSlice = newState[key]
-      const nextValue = selectorRef.current(
-        defaultTo(defaultState, stateSlice)
+      const next = selectorRef.current(
+        defaultTo(defaultState, newState[key])
       )
-      const hasChanged = prev !== nextValue
+      const hasChanged = prev !== next
 
       if (!hasChanged) {
         return
       }
 
-      selectorValue.current = nextValue
+      selectorValue.current = next
       update()
     }
 
