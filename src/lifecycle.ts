@@ -19,7 +19,7 @@ const onLifecycleDefaults = {
   }
 }
 
-function cleanupRef<T>(db: Db, atom: Atom<T>) {
+function cleanupAtom<T>(db: Db, atom: Atom<T>) {
   const { key, resetOnInactive } = atom
 
   if (!resetOnInactive) {
@@ -50,14 +50,16 @@ function isAtomActive<T>(db: Db, atom: Atom<T>) {
 }
 
 /**
- * Tracks hook info and triggers mount/unmount lifecycle
- * events.
+ * Tracks hook info, triggers mount/unmount lifecycle
+ * events, and handles any atom cleanup as necessary.
  */
-export function useHookLifecycle(
+export function hookLifecycle(
+  db: Db,
   atom: Atom<any>,
-  hookType: 'read' | 'send'
+  lifecycleType:
+    | typeof lifecycleMount
+    | typeof lifecycleUnmount
 ) {
-  const db = useDb()
   const hasRetomicRoot = db !== defaultContext
 
   if (!hasRetomicRoot) {
@@ -68,24 +70,21 @@ export function useHookLifecycle(
     )
   }
 
-  const handleAtomLifecycleState = () => {
+  if (lifecycleType === lifecycleMount) {
     db.activeHooks[atom.key] =
       (db.activeHooks[atom.key] || 0) + 1
-    emitLifecycleEvent(db, atom, lifecycleMount)
+  }
 
-    return () => {
-      db.activeHooks[atom.key] -= 1
+  if (lifecycleType === lifecycleUnmount) {
+    db.activeHooks[atom.key] -= 1
 
-      if (!isAtomActive(db, atom)) {
-        delete db.activeHooks[atom.key]
-        cleanupRef(db, atom)
-      }
-
-      emitLifecycleEvent(db, atom, lifecycleUnmount)
+    if (!isAtomActive(db, atom)) {
+      delete db.activeHooks[atom.key]
+      cleanupAtom(db, atom)
     }
   }
 
-  useEffect(handleAtomLifecycleState, [db, atom, hookType])
+  emitLifecycleEvent(db, atom, lifecycleType)
 }
 
 /**

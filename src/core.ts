@@ -6,7 +6,11 @@ import {
 } from 'react'
 import { subscribe, unsubscribe } from './channels'
 import { getState, setState } from './db'
-import { useHookLifecycle } from './lifecycle'
+import { hookLifecycle } from './lifecycle'
+import {
+  lifecycleMount,
+  lifecycleUnmount
+} from './constants'
 import type {
   Atom,
   SelectorFn,
@@ -70,6 +74,8 @@ export function useRead<T, SelectorValue = T>(
    */
   selectorRef.current = selector
   useEffect(() => {
+    hookLifecycle(rootDb, atom, lifecycleMount)
+
     const watcherFn: WatcherFn = ({
       oldState,
       newState
@@ -93,9 +99,12 @@ export function useRead<T, SelectorValue = T>(
       rootDb.stateChangeChannel,
       watcherFn
     )
-    return () => unsubscribe(rootDb.stateChangeChannel, id)
+
+    return () => {
+      unsubscribe(rootDb.stateChangeChannel, id)
+      hookLifecycle(rootDb, atom, lifecycleUnmount)
+    }
   }, [rootDb, key, defaultState, atom])
-  useHookLifecycle(atom, 'read')
 
   return selectorValue.current
 }
@@ -103,7 +112,13 @@ export function useRead<T, SelectorValue = T>(
 export function useSend<T>(atom: Atom<T>) {
   const rootDb = useDb()
 
-  useHookLifecycle(atom, 'send')
+  useEffect(() => {
+    hookLifecycle(rootDb, atom, lifecycleMount)
+
+    return () =>
+      hookLifecycle(rootDb, atom, lifecycleUnmount)
+  }, [rootDb, atom])
+
   return useMemo(
     () =>
       <Payload>(
