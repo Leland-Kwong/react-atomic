@@ -11,7 +11,7 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useReset = exports.useSend = exports.useRead = exports.atomRef = exports.atom = exports.useOnLifecycle = exports.RetomicRoot = exports.AtomRoot = exports.AtomDevTools = void 0;
+exports.useReset = exports.useSend = exports.useRead = exports.atom = exports.useOnLifecycle = exports.RetomicRoot = exports.AtomDevTools = void 0;
 var react_1 = require("react");
 var channels_1 = require("./channels");
 var db_1 = require("./db");
@@ -25,11 +25,8 @@ function $$resetAtom(_, defaultState) {
 }
 var AtomDevTools_1 = require("./AtomDevTools");
 Object.defineProperty(exports, "AtomDevTools", { enumerable: true, get: function () { return AtomDevTools_1.AtomDevTools; } });
-// IMPORTANT: alias for backwards compatibility
 var RetomicRoot_1 = require("./RetomicRoot");
-Object.defineProperty(exports, "AtomRoot", { enumerable: true, get: function () { return RetomicRoot_1.RetomicRoot; } });
-var RetomicRoot_2 = require("./RetomicRoot");
-Object.defineProperty(exports, "RetomicRoot", { enumerable: true, get: function () { return RetomicRoot_2.RetomicRoot; } });
+Object.defineProperty(exports, "RetomicRoot", { enumerable: true, get: function () { return RetomicRoot_1.RetomicRoot; } });
 var lifecycle_2 = require("./lifecycle");
 Object.defineProperty(exports, "useOnLifecycle", { enumerable: true, get: function () { return lifecycle_2.useOnLifecycle; } });
 function atom(_a) {
@@ -41,8 +38,6 @@ function atom(_a) {
     };
 }
 exports.atom = atom;
-// IMPORTANT: alias for backwards compatibility
-exports.atomRef = atom;
 var updateReadReducer = function (toggleNum) {
     return toggleNum ? 0 : 1;
 };
