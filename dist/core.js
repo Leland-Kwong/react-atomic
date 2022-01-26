@@ -47,12 +47,26 @@ function useRead(atom, selector) {
     var rootDb = (0, utils_1.useDb)();
     var initialStateSlice = (0, db_1.getState)(rootDb)[key];
     var _a = (0, react_1.useState)(selector(defaultTo(defaultState, initialStateSlice))), hookState = _a[0], setHookState = _a[1];
+    /**
+     * IMPORTANT
+     * We're using a ref to store the selector to prevent the
+     * effect callback from rerunning each render cycle. This
+     * can happen if the selector function provided is an
+     * inline function which can cause some strange edge
+     * cases (like change events not being registered. This
+     * could be due to the async event emitter we're using,
+     * but we need to investigate this).
+     */
+    var selectorRef = (0, react_1.useRef)(selector);
+    (0, react_1.useEffect)(function () {
+        selectorRef.current = selector;
+    });
     (0, react_1.useEffect)(function () {
         var watcherFn = function (_a) {
             var oldState = _a.oldState, newState = _a.newState;
             var prev = oldState[key];
             var stateSlice = newState[key];
-            var nextValue = selector(defaultTo(defaultState, stateSlice));
+            var nextValue = selectorRef.current(defaultTo(defaultState, stateSlice));
             var hasChanged = prev !== nextValue;
             if (!hasChanged) {
                 return;
@@ -60,7 +74,7 @@ function useRead(atom, selector) {
             setHookState(nextValue);
         };
         return rootDb.subscriptions.on(key, watcherFn);
-    }, [rootDb, key, selector, defaultState, atom]);
+    }, [rootDb, key, defaultState, atom]);
     (0, lifecycle_1.useHookLifecycle)(atom, 'read');
     return hookState;
 }

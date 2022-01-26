@@ -58,7 +58,8 @@ function makeDb(initialState) {
     return {
         state: initialState,
         subscriptions: subscriptions,
-        activeHooks: {}
+        activeHooks: {},
+        id: (Math.random() * 1000).toString(32)
     };
 }
 exports.makeDb = makeDb;

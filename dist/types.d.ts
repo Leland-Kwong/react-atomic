@@ -15,6 +15,7 @@ export interface Db<T> {
     activeHooks: {
         [atomKey: string]: number;
     };
+    id: string;
 }
 export interface LifecycleEventData {
     type: string;
