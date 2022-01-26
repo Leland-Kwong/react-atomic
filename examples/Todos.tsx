@@ -4,7 +4,7 @@ import {
   useRead,
   useSend,
   RetomicRoot
-} from '../core'
+} from '../retomic/core'
 
 type Todo = { text: string; done: boolean; id: string }
 

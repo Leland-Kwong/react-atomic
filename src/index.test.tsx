@@ -1,8 +1,14 @@
+/*
+ * TODO: add test for `useRead` api and different selectors
+ * on each render cycle. In general we shouldn't support this
+ * behavior, but we still need to handle this edge case.
+ * Either we throw an error or just let it work.
+ */
+
 import React from 'react'
 import {
   renderHook,
-  act,
-  cleanup
+  act
 } from '@testing-library/react-hooks'
 import {
   atom,
@@ -12,7 +18,7 @@ import {
   RetomicRoot,
   useIsNew
 } from '.'
-import { useOnLifeCycle } from './lifecycle'
+import { useOnLifecycle } from './lifecycle'
 
 type State = { text: string }
 type State2 = string
@@ -33,11 +39,6 @@ const ref = atom<State>({
 const ref2 = atom<State2>({
   key: 'test2',
   defaultState: 'foo2'
-})
-const atomNoAutoReset = atom({
-  key: 'atomNoAutoReset',
-  defaultState: '',
-  resetOnInactive: false
 })
 
 describe('core', () => {
@@ -219,35 +220,65 @@ describe('extras', () => {
 })
 
 describe('lifecycle', () => {
+  const wrapper = ({
+    children,
+    done,
+    Lifecycle
+  }: {
+    children?: any
+    done: boolean
+    Lifecycle: any
+  }) => (
+    <RetomicRoot>
+      {/* We need to render the lifecycle hook separately so
+      we it can capture the child hooks' unmount events otherwise
+      it will unmount before they happen. */}
+      <Lifecycle />
+      {!done && children}
+    </RetomicRoot>
+  )
+  const identity = (d: any) => d
   test('properly manages listeners and state on mount/unmount', async () => {
-    const onLifeCycle = jest.fn()
-    const lifeCycleWatcher = (d: any) => d
-    const wrapper = ({ children }: { children?: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const { result } = renderHook(
+    const atomToTest = ref2
+    const onLifecycle = jest.fn()
+    function Lifecycle() {
+      useOnLifecycle(onLifecycle)
+      return null
+    }
+    const { result, rerender, waitFor } = renderHook(
       () => {
-        useOnLifeCycle(ref2, onLifeCycle)
-
         return {
-          readValue: useRead(ref2, lifeCycleWatcher),
+          readValue: useRead(ref2, identity),
           sendAtom: useSend(ref2)
         }
       },
-      { wrapper }
+      {
+        wrapper,
+        initialProps: {
+          done: false,
+          Lifecycle
+        }
+      }
     )
 
     await act(async () => {
       await result.current.sendAtom(setTestState2, 'bar')
     })
-    await cleanup()
+    rerender({
+      done: true,
+      Lifecycle
+    })
+    // the event emitter we're using is async, so we need to
+    // give the lifecycle events time to finish broadcasting
+    await waitFor(() => true, { timeout: 100 })
 
-    expect(onLifeCycle.mock.calls).toEqual([
+    expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
-            [ref2.key]: 1
+            [atomToTest.key]: 1
           },
+          key: atomToTest.key,
           type: 'mount',
           state: {}
         }
@@ -255,8 +286,9 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [ref2.key]: 2
+            [atomToTest.key]: 2
           },
+          key: atomToTest.key,
           type: 'mount',
           state: {}
         }
@@ -264,15 +296,35 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [ref2.key]: 1
+            [atomToTest.key]: 2
           },
+          key: atomToTest.key,
+          type: 'stateChange',
+          state: { [atomToTest.key]: 'bar' }
+        }
+      ],
+      [
+        {
+          activeHooks: {
+            [atomToTest.key]: 1
+          },
+          key: atomToTest.key,
           type: 'unmount',
-          state: { [ref2.key]: 'bar' }
+          state: { [atomToTest.key]: 'bar' }
         }
       ],
       [
         {
           activeHooks: {},
+          key: atomToTest.key,
+          type: 'stateChange',
+          state: {}
+        }
+      ],
+      [
+        {
+          activeHooks: {},
+          key: atomToTest.key,
           type: 'unmount',
           state: {}
         }
@@ -281,43 +333,73 @@ describe('lifecycle', () => {
   })
 
   test('resetOnInactive option disabled', async () => {
-    const onLifeCycle = jest.fn()
-    const wrapper = ({ children }: { children?: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const { result } = renderHook(
+    const atomToTest = atom({
+      key: 'atomToTest',
+      defaultState: '',
+      resetOnInactive: false
+    })
+    const onLifecycle = jest.fn()
+    function Lifecycle() {
+      useOnLifecycle(onLifecycle)
+      return null
+    }
+    const { result, rerender, waitFor } = renderHook(
       () => {
-        useOnLifeCycle(atomNoAutoReset, onLifeCycle)
-
         return {
-          sendAtom: useSend(atomNoAutoReset)
+          sendAtom: useSend(atomToTest)
         }
       },
-      { wrapper }
+      {
+        wrapper,
+        initialProps: {
+          done: false,
+          Lifecycle
+        }
+      }
     )
 
     await act(async () => {
       const setTo = (_: string, newNum: string) => newNum
-      await result.current.sendAtom(setTo, '$$noReset')
+      await result.current.sendAtom(setTo, 'foo')
     })
-    await cleanup()
+    rerender({
+      done: true,
+      Lifecycle
+    })
+    // the event emitter we're using is async, so we need to
+    // give the lifecycle events time to finish broadcasting
+    await waitFor(() => true, { timeout: 100 })
 
-    expect(onLifeCycle.mock.calls).toEqual([
+    expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
-            [atomNoAutoReset.key]: 1
+            [atomToTest.key]: 1
           },
+          key: atomToTest.key,
           type: 'mount',
           state: {}
         }
       ],
       [
         {
+          activeHooks: {
+            [atomToTest.key]: 1
+          },
+          key: atomToTest.key,
+          type: 'stateChange',
+          state: {
+            [atomToTest.key]: 'foo'
+          }
+        }
+      ],
+      [
+        {
           activeHooks: {},
+          key: atomToTest.key,
           type: 'unmount',
           state: {
-            [atomNoAutoReset.key]: '$$noReset'
+            [atomToTest.key]: 'foo'
           }
         }
       ]

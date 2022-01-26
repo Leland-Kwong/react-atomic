@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getState, setState } from './db'
-import { useLifeCycle } from './lifecycle'
-import { mutable } from './mutable'
-import type { Atom, WatcherFn } from './types'
+import { useHookLifecycle } from './lifecycle'
+import type {
+  Atom,
+  SelectorFn,
+  UpdateFn,
+  WatcherFn
+} from './types'
 import { useDb } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -13,55 +17,30 @@ function $$resetAtom<T>(_: T, defaultState: T) {
   return defaultState
 }
 
-function checkDuplicateAtomKey(key: Atom<any>['key']) {
-  const isDuplicateKey = mutable.atomsByKey.has(key)
-
-  if (isDuplicateKey) {
-    const duplicateKeyPrefix =
-      process.env.NODE_ENV === 'development'
-        ? '/@atomDuplicate'
-        : ''
-    const newKey = `${key}${duplicateKeyPrefix}/${mutable.duplicaKeyCount}`
-
-    mutable.duplicaKeyCount += 1
-    console.warn(
-      `Warning: duplicate atom key \`${key}\` detected. As a safety precaution a new key, \`${newKey}\`, was automatically generated.`
-    )
-
-    return newKey
-  }
-
-  return key
-}
-
-export type { Atom } from './types'
+export type { Atom, SelectorFn, UpdateFn } from './types'
 export { AtomDevTools } from './AtomDevTools'
-// IMPORTANT: for backwards compatibility
+// IMPORTANT: alias for backwards compatibility
 export { RetomicRoot as AtomRoot } from './RetomicRoot'
 export { RetomicRoot } from './RetomicRoot'
+export { useOnLifecycle } from './lifecycle'
 
 export function atom<T>({
   key,
   defaultState,
   resetOnInactive = true
-}: Atom<T>): Readonly<Atom<T>> {
-  const actualKey = checkDuplicateAtomKey(key)
-  const ref = {
-    key: actualKey,
+}: Atom<T>): Atom<T> {
+  return {
+    key,
     defaultState,
     resetOnInactive
   }
-
-  mutable.atomsByKey.set(actualKey, ref)
-
-  return ref
 }
-// IMPORTANT: for backwards compatibility
+// IMPORTANT: alias for backwards compatibility
 export const atomRef = atom
 
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
-  selector: (state: T) => SelectorValue
+  selector: SelectorFn<T, SelectorValue>
 ) {
   const { key, defaultState } = atom
   const rootDb = useDb()
@@ -69,7 +48,21 @@ export function useRead<T, SelectorValue = T>(
   const [hookState, setHookState] = useState(
     selector(defaultTo(defaultState, initialStateSlice))
   )
+  /**
+   * IMPORTANT
+   * We're using a ref to store the selector to prevent the
+   * effect callback from rerunning each render cycle. This
+   * can happen if the selector function provided is an
+   * inline function which can cause some strange edge
+   * cases (like change events not being registered. This
+   * could be due to the async event emitter we're using,
+   * but we need to investigate this).
+   */
+  const selectorRef = useRef(selector)
 
+  useEffect(() => {
+    selectorRef.current = selector
+  })
   useEffect(() => {
     const watcherFn: WatcherFn = ({
       oldState,
@@ -77,7 +70,7 @@ export function useRead<T, SelectorValue = T>(
     }) => {
       const prev = oldState[key]
       const stateSlice = newState[key]
-      const nextValue = selector(
+      const nextValue = selectorRef.current(
         defaultTo(defaultState, stateSlice)
       )
       const hasChanged = prev !== nextValue
@@ -90,8 +83,8 @@ export function useRead<T, SelectorValue = T>(
     }
 
     return rootDb.subscriptions.on(key, watcherFn)
-  }, [rootDb, key, selector, defaultState, atom])
-  useLifeCycle(atom, 'read')
+  }, [rootDb, key, defaultState, atom])
+  useHookLifecycle(atom, 'read')
 
   return hookState
 }
@@ -99,20 +92,20 @@ export function useRead<T, SelectorValue = T>(
 export function useSend<T>(atom: Atom<T>) {
   const rootDb = useDb()
 
-  useLifeCycle(atom, 'send')
+  useHookLifecycle(atom, 'send')
   return useMemo(
     () =>
       <Payload>(
-        mutationFn: (oldState: T, payload: Payload) => T,
+        updateFn: UpdateFn<T, Payload>,
         payload: Payload
       ) => {
         if (
           process.env.NODE_ENV === 'development' &&
-          !mutationFn.name
+          !updateFn.name
         ) {
           console.error(
-            'Warning: This mutation function should be named -',
-            mutationFn
+            'Warning: This update function should be named -',
+            updateFn
           )
         }
 
@@ -124,14 +117,14 @@ export function useSend<T>(atom: Atom<T>) {
         )
         const nextState = {
           ...rootState,
-          [key]: mutationFn(stateSlice, payload)
+          [key]: updateFn(stateSlice, payload)
         }
 
         return setState(
           rootDb,
           nextState,
           atom,
-          mutationFn,
+          updateFn,
           payload
         )
       },

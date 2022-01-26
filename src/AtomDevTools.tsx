@@ -1,41 +1,44 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   noop,
-  $$internal,
-  $$lifeCycleChannel
+  lifecycleStateChange,
+  $$lifecycleChannel
 } from './constants'
 import { useDb } from './utils'
 import {
   AtomObserverProps,
   DevToolsLogEntry,
-  LifeCycleEventData
+  LifecycleEventData
 } from './types'
 
 function AtomObserver({
   onChange,
-  onLifeCycle = noop
+  onLifecycle = noop
 }: AtomObserverProps) {
   const rootDb = useDb()
 
   useEffect(() => {
-    const onLifeCycleWrapper = (
-      data: LifeCycleEventData
+    const onLifecycleWrapper = (
+      data: LifecycleEventData
     ) => {
-      onLifeCycle(data)
+      onLifecycle(data)
     }
 
     const subscriptions = [
-      rootDb.subscriptions.on($$internal, onChange),
       rootDb.subscriptions.on(
-        $$lifeCycleChannel,
-        onLifeCycleWrapper
+        lifecycleStateChange,
+        onChange
+      ),
+      rootDb.subscriptions.on(
+        $$lifecycleChannel,
+        onLifecycleWrapper
       )
     ]
 
     return () => {
       subscriptions.forEach((unsubscribe) => unsubscribe())
     }
-  }, [onChange, onLifeCycle, rootDb])
+  }, [onChange, onLifecycle, rootDb])
 
   return null
 }
@@ -64,20 +67,20 @@ export function AtomDevTools({ logSize = 50 }) {
         onChange: ({
           newState,
           atom,
-          mutationFn,
-          mutationPayload
+          updateFn,
+          updatePayload
         }) => {
           addLogEntry({
             action: {
-              functionName: mutationFn.name,
-              payload: mutationPayload,
+              functionName: updateFn.name,
+              payload: updatePayload,
               atomKey: atom.key
             },
             atomState: newState,
             timestamp: performance.now()
           })
         },
-        onLifeCycle: (data) => {
+        onLifecycle: (data) => {
           const { activeHooks } = data
 
           setHookInfo(() => activeHooks)

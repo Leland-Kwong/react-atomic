@@ -44,20 +44,20 @@ var react_1 = __importStar(require("react"));
 var constants_1 = require("./constants");
 var utils_1 = require("./utils");
 function AtomObserver(_a) {
-    var onChange = _a.onChange, _b = _a.onLifeCycle, onLifeCycle = _b === void 0 ? constants_1.noop : _b;
+    var onChange = _a.onChange, _b = _a.onLifecycle, onLifecycle = _b === void 0 ? constants_1.noop : _b;
     var rootDb = (0, utils_1.useDb)();
     (0, react_1.useEffect)(function () {
-        var onLifeCycleWrapper = function (data) {
-            onLifeCycle(data);
+        var onLifecycleWrapper = function (data) {
+            onLifecycle(data);
         };
         var subscriptions = [
-            rootDb.subscriptions.on(constants_1.$$internal, onChange),
-            rootDb.subscriptions.on(constants_1.$$lifeCycleChannel, onLifeCycleWrapper)
+            rootDb.subscriptions.on(constants_1.lifecycleStateChange, onChange),
+            rootDb.subscriptions.on(constants_1.$$lifecycleChannel, onLifecycleWrapper)
         ];
         return function () {
             subscriptions.forEach(function (unsubscribe) { return unsubscribe(); });
         };
-    }, [onChange, onLifeCycle, rootDb]);
+    }, [onChange, onLifecycle, rootDb]);
     return null;
 }
 function AtomDevTools(_a) {
@@ -75,18 +75,18 @@ function AtomDevTools(_a) {
     var atomObserverProps = (0, react_1.useMemo)(function () {
         return {
             onChange: function (_a) {
-                var newState = _a.newState, atom = _a.atom, mutationFn = _a.mutationFn, mutationPayload = _a.mutationPayload;
+                var newState = _a.newState, atom = _a.atom, updateFn = _a.updateFn, updatePayload = _a.updatePayload;
                 addLogEntry({
                     action: {
-                        functionName: mutationFn.name,
-                        payload: mutationPayload,
+                        functionName: updateFn.name,
+                        payload: updatePayload,
                         atomKey: atom.key
                     },
                     atomState: newState,
                     timestamp: performance.now()
                 });
             },
-            onLifeCycle: function (data) {
+            onLifecycle: function (data) {
                 var activeHooks = data.activeHooks;
                 setHookInfo(function () { return activeHooks; });
             }

@@ -1,25 +1,18 @@
 import Emittery from 'emittery'
 
-import { $$internal, $$lifeCycleChannel } from './constants'
+import {
+  lifecycleStateChange,
+  $$lifecycleChannel
+} from './constants'
 
 type Subscriptions<T> = Emittery<
   {
     [key: Atom<T>['key']]: WatcherEventData
-    [$$internal]: WatcherEventData
+    [lifecycleStateChange]: WatcherEventData
   } & {
-    [$$lifeCycleChannel]: LifeCycleEventData
+    [$$lifecycleChannel]: LifecycleEventData
   }
 >
-
-export interface Atom<T> {
-  key: string
-  defaultState: T
-  /**
-   * Whether to reset the state when there are no active
-   * hooks.
-   */
-  resetOnInactive?: boolean
-}
 
 export interface DbState {
   [key: string]: any
@@ -32,23 +25,24 @@ export interface Db<T> {
   activeHooks: {
     [atomKey: string]: number
   }
+  id: string
 }
 
-export interface LifeCycleEventData {
+export interface LifecycleEventData {
   type: string
   key: Atom<any>['key']
   state: Db<any>['state']
   activeHooks: Readonly<Db<any>['activeHooks']>
 }
 
-export type LifecycleFn = (data: LifeCycleEventData) => void
+export type LifecycleFn = (data: LifecycleEventData) => void
 
 interface WatcherEventData {
   oldState: DbState
   newState: DbState
   atom: Atom<any>
-  mutationFn: Function
-  mutationPayload: any
+  updateFn: Function
+  updatePayload: any
   db: Db<any>
 }
 
@@ -56,7 +50,7 @@ export type WatcherFn = (data: WatcherEventData) => void
 
 export interface AtomObserverProps {
   onChange: WatcherFn
-  onLifeCycle?: LifecycleFn
+  onLifecycle?: LifecycleFn
 }
 
 export interface DevToolsLogEntry {
@@ -68,3 +62,25 @@ export interface DevToolsLogEntry {
     atomKey: string
   }
 }
+
+/***************
+ * Public Types
+ ***************/
+export interface Atom<T> {
+  key: string
+  defaultState: T
+  /**
+   * Whether to reset the state when there are no active
+   * hooks.
+   */
+  resetOnInactive?: boolean
+}
+
+export type SelectorFn<State, SelectorValue> = (
+  state: State
+) => SelectorValue
+
+export type UpdateFn<State, Payload> = (
+  state: State,
+  payload: Payload
+) => State

@@ -25,6 +25,7 @@ function shallowCompare(cache: any, value: any) {
 }
 
 /**
+ * @public
  * Returns a new function that compares the old return value
  * and new return value. If they are the same, then it will
  * return what was previously returned. This is useful for
