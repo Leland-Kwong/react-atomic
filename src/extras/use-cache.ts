@@ -33,17 +33,20 @@ function shallowCompare(cache: any, value: any) {
  * unecessary rerenders.
  */
 export function useIsNew<X, Y>(
-  fn: (x: X) => Y,
+  inputFn: (x: X) => Y,
   isNewValue: (prev: Y, next: Y) => boolean = shallowCompare
 ): (x: X) => Y {
   const cache = useRef<Y | null>(null)
+  const args = { fn: inputFn, isNewValue }
+  const argsRef = useRef(args)
+  argsRef.current = args
 
-  return useMemo(() => {
+  const newFn = useMemo(() => {
     function wrappedFn(x: X) {
-      const next = fn(x)
+      const next = argsRef.current.fn(x)
       const shouldUpdateCache =
         cache.current === null ||
-        isNewValue(cache.current, next)
+        argsRef.current.isNewValue(cache.current, next)
 
       if (shouldUpdateCache) {
         cache.current = next
@@ -52,10 +55,12 @@ export function useIsNew<X, Y>(
       return cache.current as Y
     }
 
-    Object.defineProperty(wrappedFn, 'name', {
-      value: fn.name
-    })
-
     return wrappedFn
-  }, [fn, isNewValue])
+  }, [])
+
+  Object.defineProperty(newFn, 'name', {
+    value: inputFn.name
+  })
+
+  return newFn
 }

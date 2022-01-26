@@ -24,7 +24,7 @@ export interface Db {
 
 export type LifecycleFn = (data: LifecycleEventData) => void
 
-interface WatcherEventData {
+export interface WatcherEventData {
   oldState: DbState
   newState: DbState
   atom: Atom<any>

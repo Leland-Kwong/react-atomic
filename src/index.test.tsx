@@ -19,6 +19,7 @@ import {
   useIsNew
 } from '.'
 import { useOnLifecycle } from './lifecycle'
+import type { SelectorFn } from './'
 
 type State = { text: string }
 type State2 = string
@@ -42,17 +43,55 @@ const ref2 = atom<State2>({
 })
 
 describe('core', () => {
-  test('useRead', () => {
-    const wrapper = ({ children }: { children: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const selector = (d: State) => d.text.length
-    const { result } = renderHook(
-      () => useRead(ref, selector),
-      { wrapper }
-    )
+  describe('useRead', () => {
+    const wrapper = ({
+      children
+    }: {
+      children?: any
+      selector: SelectorFn<State, any>
+    }) => <RetomicRoot>{children}</RetomicRoot>
 
-    expect(result.current).toBe(3)
+    test('different selector each render', () => {
+      const sliceText = (dist: number) => (d: State) =>
+        d.text.substring(0, dist)
+      const { result, rerender } = renderHook(
+        ({ selector }) => useRead(ref, selector),
+        {
+          wrapper,
+          initialProps: {
+            selector: sliceText(1)
+          }
+        }
+      )
+
+      expect(result.current).toBe('f')
+      rerender({ selector: sliceText(3) })
+      expect(result.current).toBe('foo')
+    })
+
+    test('only updates when change matches atom key', () => {
+      const selector1 = jest.fn()
+      const selector2 = jest.fn()
+      const { result } = renderHook(
+        () => {
+          const val1 = useRead(ref, selector1)
+          const val2 = useRead(ref2, selector2)
+          const send1 = useSend(ref)
+
+          return { val1, val2, send1 }
+        },
+        { wrapper }
+      )
+
+      act(() => {
+        const setText = (_: State, text: string) => ({
+          text
+        })
+        result.current.send1(setText, 'bar')
+      })
+      expect(selector1.mock.calls.length).toBe(2)
+      expect(selector2.mock.calls.length).toBe(1)
+    })
   })
 
   test('useSend', () => {
@@ -78,16 +117,16 @@ describe('core', () => {
     )
 
     act(() => {
-      result.current.sendAtom2(setTestState2, 'bar2')
-    })
-    act(() => {
       result.current.sendAtom(setTestState, 'baz')
     })
+    act(() => {
+      result.current.sendAtom2(setTestState2, 'bar2')
+    })
 
-    expect(result.current.readValue2).toBe('bar2')
     expect(result.current.readValue).toEqual({
       text: 'baz'
     })
+    expect(result.current.readValue2).toBe('bar2')
   })
 
   test('useReset', () => {
@@ -215,6 +254,35 @@ describe('extras', () => {
       rerender({ value: 'foo' })
       expect(result.all[0]).not.toBe(result.all[1])
       expect(result.all.length).toBe(2)
+    })
+
+    test('handles changing inputs', () => {
+      const initialProps = {
+        value: 'foo',
+        inputFn: ({ value }: { value: string }): any => ({
+          value
+        })
+      }
+      const { result, rerender } = renderHook(
+        ({ value, inputFn }) => {
+          const cachedFunction = useIsNew(
+            inputFn,
+            (prev, next) => prev !== next
+          )
+          return cachedFunction({ value })
+        },
+        {
+          wrapper,
+          initialProps
+        }
+      )
+
+      expect(result.current).toEqual({ value: 'foo' })
+      rerender({
+        value: 'foo',
+        inputFn: ({ value }) => value.length
+      })
+      expect(result.current).toBe(3)
     })
 
     test('forwards function name', () => {
