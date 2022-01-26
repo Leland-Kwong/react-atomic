@@ -4,7 +4,7 @@ import {
   lifecycleMount,
   lifecycleUnmount
 } from './constants'
-import type { Atom, Db } from './types'
+import type { Atom, Db, WatcherEventData } from './types'
 
 export function makeDb<T>(initialState: T): Db {
   return {
@@ -44,7 +44,7 @@ export async function setState<T>(
   updatePayload: any
 ) {
   const oldState = db.state
-  const eventData = {
+  const eventData: WatcherEventData = {
     oldState,
     newState,
     atom,
