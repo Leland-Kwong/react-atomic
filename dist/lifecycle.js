@@ -15,6 +15,7 @@ exports.useOnLifecycle = exports.useHookLifecycle = void 0;
 var react_1 = require("react");
 var db_1 = require("./db");
 var constants_1 = require("./constants");
+var channels_1 = require("./channels");
 var root_context_1 = require("./root-context");
 var utils_1 = require("./utils");
 var onLifecycleDefaults = {
@@ -75,13 +76,13 @@ function useOnLifecycle(fn, predicate) {
     if (predicate === void 0) { predicate = onLifecycleDefaults.predicate; }
     var db = (0, utils_1.useDb)();
     (0, react_1.useEffect)(function () {
-        var unsubscribe = db.subscriptions.on(constants_1.$$lifecycleChannel, function (data) {
+        var id = (0, channels_1.subscribe)(db.lifecycleChannel, function (data) {
             if (!predicate(data)) {
                 return;
             }
             fn(data);
         });
-        return unsubscribe;
+        return function () { return (0, channels_1.unsubscribe)(db.lifecycleChannel, id); };
     }, [db, fn, predicate]);
 }
 exports.useOnLifecycle = useOnLifecycle;

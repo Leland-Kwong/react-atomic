@@ -8,8 +8,8 @@ export declare function useHookLifecycle(atom: Atom<any>, hookType: 'read' | 'se
  * @public
  * A react hook for observing retomic lifecycle changes
  */
-export declare function useOnLifecycle<T>(fn: (data: {
+export declare function useOnLifecycle(fn: (data: {
     type: string;
-    activeHooks: Db<T>['activeHooks'];
-    state: Db<T>['state'];
+    activeHooks: Db['activeHooks'];
+    state: Db['state'];
 }) => void, predicate?: (data: LifecycleEventData) => boolean): void;

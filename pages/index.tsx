@@ -120,8 +120,7 @@ const Home: NextPage = () => {
   const AtomDevTools = useMemo(
     () =>
       dynamic(
-        async () =>
-          (await import('../src/retomic')).AtomDevTools,
+        async () => (await import('../src')).AtomDevTools,
         { ssr: false }
       ),
     []

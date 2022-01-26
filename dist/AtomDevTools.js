@@ -43,6 +43,7 @@ exports.AtomDevTools = void 0;
 var react_1 = __importStar(require("react"));
 var constants_1 = require("./constants");
 var utils_1 = require("./utils");
+var channels_1 = require("./channels");
 function AtomObserver(_a) {
     var onChange = _a.onChange, _b = _a.onLifecycle, onLifecycle = _b === void 0 ? constants_1.noop : _b;
     var rootDb = (0, utils_1.useDb)();
@@ -50,12 +51,11 @@ function AtomObserver(_a) {
         var onLifecycleWrapper = function (data) {
             onLifecycle(data);
         };
-        var subscriptions = [
-            rootDb.subscriptions.on(constants_1.lifecycleStateChange, onChange),
-            rootDb.subscriptions.on(constants_1.$$lifecycleChannel, onLifecycleWrapper)
-        ];
+        var id1 = (0, channels_1.subscribe)(rootDb.stateChangeChannel, onChange);
+        var id2 = (0, channels_1.subscribe)(rootDb.lifecycleChannel, onLifecycleWrapper);
         return function () {
-            subscriptions.forEach(function (unsubscribe) { return unsubscribe(); });
+            (0, channels_1.unsubscribe)(rootDb.stateChangeChannel, id1);
+            (0, channels_1.unsubscribe)(rootDb.lifecycleChannel, id2);
         };
     }, [onChange, onLifecycle, rootDb]);
     return null;

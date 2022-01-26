@@ -13,6 +13,7 @@ var __assign = (this && this.__assign) || function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useReset = exports.useSend = exports.useRead = exports.atomRef = exports.atom = exports.useOnLifecycle = exports.RetomicRoot = exports.AtomRoot = exports.AtomDevTools = void 0;
 var react_1 = require("react");
+var channels_1 = require("./channels");
 var db_1 = require("./db");
 var lifecycle_1 = require("./lifecycle");
 var utils_1 = require("./utils");
@@ -73,7 +74,8 @@ function useRead(atom, selector) {
             }
             setHookState(nextValue);
         };
-        return rootDb.subscriptions.on(key, watcherFn);
+        var id = (0, channels_1.subscribe)(rootDb.stateChangeChannel, watcherFn);
+        return function () { return (0, channels_1.unsubscribe)(rootDb.stateChangeChannel, id); };
     }, [rootDb, key, defaultState, atom]);
     (0, lifecycle_1.useHookLifecycle)(atom, 'read');
     return hookState;
