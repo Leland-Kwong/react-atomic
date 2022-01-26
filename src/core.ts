@@ -25,8 +25,6 @@ function $$resetAtom<T>(_: T, defaultState: T) {
 
 export type { Atom, SelectorFn, UpdateFn } from './types'
 export { AtomDevTools } from './AtomDevTools'
-// IMPORTANT: alias for backwards compatibility
-export { RetomicRoot as AtomRoot } from './RetomicRoot'
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
@@ -41,8 +39,6 @@ export function atom<T>({
     resetOnInactive
   }
 }
-// IMPORTANT: alias for backwards compatibility
-export const atomRef = atom
 
 const updateReadReducer = (toggleNum: number) =>
   toggleNum ? 0 : 1
