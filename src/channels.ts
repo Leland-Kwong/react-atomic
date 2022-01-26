@@ -1,9 +1,6 @@
-const performance =
-  typeof window === 'undefined'
-    ? require('perf_hooks').performance
-    : window.performance
+import { nanoid } from 'nanoid'
 
-type SubscriberId = number
+type SubscriberId = string
 export type ChannelFn<T> = (data: T) => void
 export type Channel<T> = Map<SubscriberId, ChannelFn<T>>
 
@@ -23,7 +20,7 @@ export function subscribe<T>(
   channel: Channel<T>,
   fn: ChannelFn<T>
 ): SubscriberId {
-  const id = performance.now()
+  const id = nanoid()
   channel.set(id, fn)
 
   return id

@@ -92,7 +92,7 @@ export function useHookLifecycle(
  * @public
  * A react hook for observing retomic lifecycle changes
  */
-export function useOnLifecycle<T>(
+export function useOnLifecycle(
   fn: (data: {
     type: string
     activeHooks: Db['activeHooks']
