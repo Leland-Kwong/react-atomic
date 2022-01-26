@@ -216,6 +216,16 @@ describe('extras', () => {
       expect(result.all[0]).not.toBe(result.all[1])
       expect(result.all.length).toBe(2)
     })
+
+    test('forwards function name', () => {
+      function namedFn() {}
+      const { result } = renderHook(
+        () => useIsNew(namedFn),
+        { wrapper }
+      )
+
+      expect(result.current.name).toBe('namedFn')
+    })
   })
 })
 
