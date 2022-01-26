@@ -6,7 +6,7 @@ import {
 } from './db'
 import type { Atom, Db, LifecycleEventData } from './types'
 import {
-  $$lifeCycleChannel,
+  $$lifecycleChannel,
   lifecycleMount,
   lifecycleUnmount
 } from './constants'
@@ -106,7 +106,7 @@ export function useOnLifecycle<T>(
 
   useEffect(() => {
     const unsubscribe = db.subscriptions.on(
-      $$lifeCycleChannel,
+      $$lifecycleChannel,
       (data) => {
         if (!predicate(data)) {
           return

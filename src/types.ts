@@ -2,7 +2,7 @@ import Emittery from 'emittery'
 
 import {
   lifecycleStateChange,
-  $$lifeCycleChannel
+  $$lifecycleChannel
 } from './constants'
 
 type Subscriptions<T> = Emittery<
@@ -10,7 +10,7 @@ type Subscriptions<T> = Emittery<
     [key: Atom<T>['key']]: WatcherEventData
     [lifecycleStateChange]: WatcherEventData
   } & {
-    [$$lifeCycleChannel]: LifecycleEventData
+    [$$lifecycleChannel]: LifecycleEventData
   }
 >
 

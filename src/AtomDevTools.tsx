@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   noop,
   lifecycleStateChange,
-  $$lifeCycleChannel
+  $$lifecycleChannel
 } from './constants'
 import { useDb } from './utils'
 import {
@@ -30,7 +30,7 @@ function AtomObserver({
         onChange
       ),
       rootDb.subscriptions.on(
-        $$lifeCycleChannel,
+        $$lifecycleChannel,
         onLifecycleWrapper
       )
     ]
