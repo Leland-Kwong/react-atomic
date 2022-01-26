@@ -93,16 +93,16 @@ describe('core', () => {
     )
 
     act(() => {
-      result.current.sendAtom2(setTestState2, 'bar2')
-    })
-    act(() => {
       result.current.sendAtom(setTestState, 'baz')
     })
+    act(() => {
+      result.current.sendAtom2(setTestState2, 'bar2')
+    })
 
-    expect(result.current.readValue2).toBe('bar2')
     expect(result.current.readValue).toEqual({
       text: 'baz'
     })
+    expect(result.current.readValue2).toBe('bar2')
   })
 
   test('useReset', () => {
