@@ -43,25 +43,25 @@ function atom(_a) {
 exports.atom = atom;
 // IMPORTANT: alias for backwards compatibility
 exports.atomRef = atom;
+var updateReadReducer = function (toggleNum) {
+    return toggleNum ? 0 : 1;
+};
 function useRead(atom, selector) {
     var key = atom.key, defaultState = atom.defaultState;
     var rootDb = (0, utils_1.useDb)();
     var initialStateSlice = (0, db_1.getState)(rootDb)[key];
-    var _a = (0, react_1.useState)(selector(defaultTo(defaultState, initialStateSlice))), hookState = _a[0], setHookState = _a[1];
+    var _a = (0, react_1.useReducer)(updateReadReducer, 0), update = _a[1];
+    var selectorValue = (0, react_1.useRef)(undefined);
+    var selectorRef = (0, react_1.useRef)(undefined);
+    var isNewSelector = selectorRef.current !== selector;
+    if (isNewSelector) {
+        selectorValue.current = selector(defaultTo(defaultState, initialStateSlice));
+    }
     /**
      * IMPORTANT
-     * We're using a ref to store the selector to prevent the
-     * effect callback from rerunning each render cycle. This
-     * can happen if the selector function provided is an
-     * inline function which can cause some strange edge
-     * cases (like change events not being registered. This
-     * could be due to the async event emitter we're using,
-     * but we need to investigate this).
+     * Update the selector in case it changes between renders.
      */
-    var selectorRef = (0, react_1.useRef)(selector);
-    (0, react_1.useEffect)(function () {
-        selectorRef.current = selector;
-    });
+    selectorRef.current = selector;
     (0, react_1.useEffect)(function () {
         var watcherFn = function (_a) {
             var oldState = _a.oldState, newState = _a.newState;
@@ -72,13 +72,14 @@ function useRead(atom, selector) {
             if (!hasChanged) {
                 return;
             }
-            setHookState(nextValue);
+            selectorValue.current = nextValue;
+            update();
         };
         var id = (0, channels_1.subscribe)(rootDb.stateChangeChannel, watcherFn);
         return function () { return (0, channels_1.unsubscribe)(rootDb.stateChangeChannel, id); };
     }, [rootDb, key, defaultState, atom]);
     (0, lifecycle_1.useHookLifecycle)(atom, 'read');
-    return hookState;
+    return selectorValue.current;
 }
 exports.useRead = useRead;
 function useSend(atom) {

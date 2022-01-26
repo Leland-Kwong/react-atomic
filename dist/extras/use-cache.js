@@ -32,14 +32,20 @@ function shallowCompare(cache, value) {
 function useIsNew(fn, isNewValue) {
     if (isNewValue === void 0) { isNewValue = shallowCompare; }
     var cache = (0, react_1.useRef)(null);
-    return function (x) {
-        var next = fn(x);
-        var shouldUpdateCache = cache.current === null ||
-            isNewValue(cache.current, next);
-        if (shouldUpdateCache) {
-            cache.current = next;
+    return (0, react_1.useMemo)(function () {
+        function wrappedFn(x) {
+            var next = fn(x);
+            var shouldUpdateCache = cache.current === null ||
+                isNewValue(cache.current, next);
+            if (shouldUpdateCache) {
+                cache.current = next;
+            }
+            return cache.current;
         }
-        return cache.current;
-    };
+        Object.defineProperty(wrappedFn, 'name', {
+            value: fn.name
+        });
+        return wrappedFn;
+    }, [fn, isNewValue]);
 }
 exports.useIsNew = useIsNew;
