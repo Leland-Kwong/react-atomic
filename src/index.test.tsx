@@ -19,6 +19,7 @@ import {
   useIsNew
 } from '.'
 import { useOnLifecycle } from './lifecycle'
+import type { SelectorFn } from './'
 
 type State = { text: string }
 type State2 = string
@@ -42,17 +43,31 @@ const ref2 = atom<State2>({
 })
 
 describe('core', () => {
-  test('useRead', () => {
-    const wrapper = ({ children }: { children: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const selector = (d: State) => d.text.length
-    const { result } = renderHook(
-      () => useRead(ref, selector),
-      { wrapper }
-    )
+  describe('useRead', () => {
+    const wrapper = ({
+      children
+    }: {
+      children?: any
+      selector: SelectorFn<State, any>
+    }) => <RetomicRoot>{children}</RetomicRoot>
 
-    expect(result.current).toBe(3)
+    test('different selector each render', () => {
+      const sliceText = (dist: number) => (d: State) =>
+        d.text.substring(0, dist)
+      const { result, rerender } = renderHook(
+        ({ selector }) => useRead(ref, selector),
+        {
+          wrapper,
+          initialProps: {
+            selector: sliceText(1)
+          }
+        }
+      )
+
+      expect(result.current).toBe('f')
+      rerender({ selector: sliceText(3) })
+      expect(result.current).toBe('foo')
+    })
   })
 
   test('useSend', () => {

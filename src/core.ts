@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useReducer
+} from 'react'
 import { subscribe, unsubscribe } from './channels'
 import { getState, setState } from './db'
 import { useHookLifecycle } from './lifecycle'
@@ -39,31 +44,35 @@ export function atom<T>({
 // IMPORTANT: alias for backwards compatibility
 export const atomRef = atom
 
+const updateReadReducer = (toggleNum: number) =>
+  toggleNum ? 0 : 1
+
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
   selector: SelectorFn<T, SelectorValue>
-) {
+): SelectorValue {
   const { key, defaultState } = atom
   const rootDb = useDb()
   const initialStateSlice = getState(rootDb)[key]
-  const [hookState, setHookState] = useState(
-    selector(defaultTo(defaultState, initialStateSlice))
+  const [, update] = useReducer(updateReadReducer, 0)
+  const selectorValue = useRef(
+    undefined as unknown as SelectorValue
   )
+  const selectorRef = useRef(
+    undefined as unknown as SelectorFn<T, SelectorValue>
+  )
+  const isNewSelector = selectorRef.current !== selector
+
+  if (isNewSelector) {
+    selectorValue.current = selector(
+      defaultTo(defaultState, initialStateSlice)
+    )
+  }
   /**
    * IMPORTANT
-   * We're using a ref to store the selector to prevent the
-   * effect callback from rerunning each render cycle. This
-   * can happen if the selector function provided is an
-   * inline function which can cause some strange edge
-   * cases (like change events not being registered. This
-   * could be due to the async event emitter we're using,
-   * but we need to investigate this).
+   * Update the selector in case it changes between renders.
    */
-  const selectorRef = useRef(selector)
-
-  useEffect(() => {
-    selectorRef.current = selector
-  })
+  selectorRef.current = selector
   useEffect(() => {
     const watcherFn: WatcherFn = ({
       oldState,
@@ -80,7 +89,8 @@ export function useRead<T, SelectorValue = T>(
         return
       }
 
-      setHookState(nextValue)
+      selectorValue.current = nextValue
+      update()
     }
 
     const id = subscribe(
@@ -91,7 +101,7 @@ export function useRead<T, SelectorValue = T>(
   }, [rootDb, key, defaultState, atom])
   useHookLifecycle(atom, 'read')
 
-  return hookState
+  return selectorValue.current
 }
 
 export function useSend<T>(atom: Atom<T>) {
