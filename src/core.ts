@@ -1,6 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useReducer
+} from 'react'
+import { subscribe, unsubscribe } from './channels'
 import { getState, setState } from './db'
-import { useHookLifecycle } from './lifecycle'
+import { hookLifecycle } from './lifecycle'
+import {
+  lifecycleMount,
+  lifecycleUnmount
+} from './constants'
 import type {
   Atom,
   SelectorFn,
@@ -18,9 +28,6 @@ function $$resetAtom<T>(_: T, defaultState: T) {
 }
 
 export type { Atom, SelectorFn, UpdateFn } from './types'
-export { AtomDevTools } from './AtomDevTools'
-// IMPORTANT: alias for backwards compatibility
-export { RetomicRoot as AtomRoot } from './RetomicRoot'
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
@@ -35,64 +42,86 @@ export function atom<T>({
     resetOnInactive
   }
 }
-// IMPORTANT: alias for backwards compatibility
-export const atomRef = atom
+
+const updateReadReducer = (toggleNum: number) =>
+  toggleNum ? 0 : 1
 
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
   selector: SelectorFn<T, SelectorValue>
-) {
+): SelectorValue {
   const { key, defaultState } = atom
-  const rootDb = useDb()
-  const initialStateSlice = getState(rootDb)[key]
-  const [hookState, setHookState] = useState(
-    selector(defaultTo(defaultState, initialStateSlice))
+  const db = useDb()
+  const [, update] = useReducer(updateReadReducer, 0)
+  const selectorValue = useRef(
+    undefined as unknown as SelectorValue
   )
-  /**
-   * IMPORTANT
-   * We're using a ref to store the selector to prevent the
-   * effect callback from rerunning each render cycle. This
-   * can happen if the selector function provided is an
-   * inline function which can cause some strange edge
-   * cases (like change events not being registered. This
-   * could be due to the async event emitter we're using,
-   * but we need to investigate this).
-   */
-  const selectorRef = useRef(selector)
+  const selectorRef = useRef(
+    undefined as unknown as SelectorFn<T, SelectorValue>
+  )
+  const isNewSelector = selectorRef.current !== selector
+
+  if (isNewSelector) {
+    const stateSlice = getState(db)[key]
+
+    selectorValue.current = selector(
+      defaultTo(defaultState, stateSlice)
+    )
+    /**
+     * IMPORTANT
+     * Update the selector in case it changes between renders.
+     */
+    selectorRef.current = selector
+  }
 
   useEffect(() => {
-    selectorRef.current = selector
-  })
-  useEffect(() => {
+    hookLifecycle(db, atom, lifecycleMount)
+
     const watcherFn: WatcherFn = ({
       oldState,
-      newState
+      newState,
+      atom: initiatedBy
     }) => {
+      const shouldUpdate = initiatedBy.key === key
+
+      if (!shouldUpdate) {
+        return
+      }
+
       const prev = oldState[key]
-      const stateSlice = newState[key]
-      const nextValue = selectorRef.current(
-        defaultTo(defaultState, stateSlice)
+      const next = selectorRef.current(
+        defaultTo(defaultState, newState[key])
       )
-      const hasChanged = prev !== nextValue
+      const hasChanged = prev !== next
 
       if (!hasChanged) {
         return
       }
 
-      setHookState(nextValue)
+      selectorValue.current = next
+      update()
     }
 
-    return rootDb.subscriptions.on(key, watcherFn)
-  }, [rootDb, key, defaultState, atom])
-  useHookLifecycle(atom, 'read')
+    const id = subscribe(db.stateChangeChannel, watcherFn)
 
-  return hookState
+    return () => {
+      unsubscribe(db.stateChangeChannel, id)
+      hookLifecycle(db, atom, lifecycleUnmount)
+    }
+  }, [db, key, defaultState, atom])
+
+  return selectorValue.current
 }
 
 export function useSend<T>(atom: Atom<T>) {
-  const rootDb = useDb()
+  const db = useDb()
 
-  useHookLifecycle(atom, 'send')
+  useEffect(() => {
+    hookLifecycle(db, atom, lifecycleMount)
+
+    return () => hookLifecycle(db, atom, lifecycleUnmount)
+  }, [db, atom])
+
   return useMemo(
     () =>
       <Payload>(
@@ -110,7 +139,7 @@ export function useSend<T>(atom: Atom<T>) {
         }
 
         const { key, defaultState } = atom
-        const rootState = getState(rootDb)
+        const rootState = getState(db)
         const stateSlice = defaultTo(
           defaultState,
           rootState[key]
@@ -121,14 +150,14 @@ export function useSend<T>(atom: Atom<T>) {
         }
 
         return setState(
-          rootDb,
+          db,
           nextState,
           atom,
           updateFn,
           payload
         )
       },
-    [rootDb, atom]
+    [db, atom]
   )
 }
 

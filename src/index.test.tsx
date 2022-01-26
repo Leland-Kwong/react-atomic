@@ -19,6 +19,7 @@ import {
   useIsNew
 } from '.'
 import { useOnLifecycle } from './lifecycle'
+import type { SelectorFn } from './'
 
 type State = { text: string }
 type State2 = string
@@ -42,20 +43,58 @@ const ref2 = atom<State2>({
 })
 
 describe('core', () => {
-  test('useRead', () => {
-    const wrapper = ({ children }: { children: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const selector = (d: State) => d.text.length
-    const { result } = renderHook(
-      () => useRead(ref, selector),
-      { wrapper }
-    )
+  describe('useRead', () => {
+    const wrapper = ({
+      children
+    }: {
+      children?: any
+      selector: SelectorFn<State, any>
+    }) => <RetomicRoot>{children}</RetomicRoot>
 
-    expect(result.current).toBe(3)
+    test('different selector each render', () => {
+      const sliceText = (dist: number) => (d: State) =>
+        d.text.substring(0, dist)
+      const { result, rerender } = renderHook(
+        ({ selector }) => useRead(ref, selector),
+        {
+          wrapper,
+          initialProps: {
+            selector: sliceText(1)
+          }
+        }
+      )
+
+      expect(result.current).toBe('f')
+      rerender({ selector: sliceText(3) })
+      expect(result.current).toBe('foo')
+    })
+
+    test('only updates when change matches atom key', () => {
+      const selector1 = jest.fn()
+      const selector2 = jest.fn()
+      const { result } = renderHook(
+        () => {
+          const val1 = useRead(ref, selector1)
+          const val2 = useRead(ref2, selector2)
+          const send1 = useSend(ref)
+
+          return { val1, val2, send1 }
+        },
+        { wrapper }
+      )
+
+      act(() => {
+        const setText = (_: State, text: string) => ({
+          text
+        })
+        result.current.send1(setText, 'bar')
+      })
+      expect(selector1.mock.calls.length).toBe(2)
+      expect(selector2.mock.calls.length).toBe(1)
+    })
   })
 
-  test('useSend', async () => {
+  test('useSend', () => {
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
@@ -77,20 +116,20 @@ describe('core', () => {
       { wrapper }
     )
 
-    await act(async () => {
-      await result.current.sendAtom2(setTestState2, 'bar2')
+    act(() => {
+      result.current.sendAtom(setTestState, 'baz')
     })
-    await act(async () => {
-      await result.current.sendAtom(setTestState, 'baz')
+    act(() => {
+      result.current.sendAtom2(setTestState2, 'bar2')
     })
 
-    expect(result.current.readValue2).toBe('bar2')
     expect(result.current.readValue).toEqual({
       text: 'baz'
     })
+    expect(result.current.readValue2).toBe('bar2')
   })
 
-  test('useReset', async () => {
+  test('useReset', () => {
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
@@ -110,11 +149,11 @@ describe('core', () => {
       { wrapper }
     )
 
-    await act(async () => {
-      await result.current.sendAtom(setTestState, 'bar')
+    act(() => {
+      result.current.sendAtom(setTestState, 'bar')
     })
-    await act(async () => {
-      await result.current.resetAtom()
+    act(() => {
+      result.current.resetAtom()
     })
 
     expect(result.current.readValue).toBe(ref.defaultState)
@@ -216,6 +255,45 @@ describe('extras', () => {
       expect(result.all[0]).not.toBe(result.all[1])
       expect(result.all.length).toBe(2)
     })
+
+    test('handles changing inputs', () => {
+      const initialProps = {
+        value: 'foo',
+        inputFn: ({ value }: { value: string }): any => ({
+          value
+        })
+      }
+      const { result, rerender } = renderHook(
+        ({ value, inputFn }) => {
+          const cachedFunction = useIsNew(
+            inputFn,
+            (prev, next) => prev !== next
+          )
+          return cachedFunction({ value })
+        },
+        {
+          wrapper,
+          initialProps
+        }
+      )
+
+      expect(result.current).toEqual({ value: 'foo' })
+      rerender({
+        value: 'foo',
+        inputFn: ({ value }) => value.length
+      })
+      expect(result.current).toBe(3)
+    })
+
+    test('forwards function name', () => {
+      function namedFn() {}
+      const { result } = renderHook(
+        () => useIsNew(namedFn),
+        { wrapper }
+      )
+
+      expect(result.current.name).toBe('namedFn')
+    })
   })
 })
 
@@ -231,21 +309,21 @@ describe('lifecycle', () => {
   }) => (
     <RetomicRoot>
       {/* We need to render the lifecycle hook separately so
-      we it can capture the child hooks' unmount events otherwise
+      it can capture the child hooks' unmount events otherwise
       it will unmount before they happen. */}
       <Lifecycle />
       {!done && children}
     </RetomicRoot>
   )
   const identity = (d: any) => d
-  test('properly manages listeners and state on mount/unmount', async () => {
+  test('properly manages listeners and state on mount/unmount', () => {
     const atomToTest = ref2
     const onLifecycle = jest.fn()
     function Lifecycle() {
       useOnLifecycle(onLifecycle)
       return null
     }
-    const { result, rerender, waitFor } = renderHook(
+    const { result, rerender } = renderHook(
       () => {
         return {
           readValue: useRead(ref2, identity),
@@ -261,16 +339,13 @@ describe('lifecycle', () => {
       }
     )
 
-    await act(async () => {
-      await result.current.sendAtom(setTestState2, 'bar')
+    act(() => {
+      result.current.sendAtom(setTestState2, 'bar')
     })
     rerender({
       done: true,
       Lifecycle
     })
-    // the event emitter we're using is async, so we need to
-    // give the lifecycle events time to finish broadcasting
-    await waitFor(() => true, { timeout: 100 })
 
     expect(onLifecycle.mock.calls).toEqual([
       [
@@ -332,7 +407,7 @@ describe('lifecycle', () => {
     ])
   })
 
-  test('resetOnInactive option disabled', async () => {
+  test('resetOnInactive option disabled', () => {
     const atomToTest = atom({
       key: 'atomToTest',
       defaultState: '',
@@ -343,7 +418,7 @@ describe('lifecycle', () => {
       useOnLifecycle(onLifecycle)
       return null
     }
-    const { result, rerender, waitFor } = renderHook(
+    const { result, rerender } = renderHook(
       () => {
         return {
           sendAtom: useSend(atomToTest)
@@ -358,17 +433,14 @@ describe('lifecycle', () => {
       }
     )
 
-    await act(async () => {
+    act(() => {
       const setTo = (_: string, newNum: string) => newNum
-      await result.current.sendAtom(setTo, 'foo')
+      result.current.sendAtom(setTo, 'foo')
     })
     rerender({
       done: true,
       Lifecycle
     })
-    // the event emitter we're using is async, so we need to
-    // give the lifecycle events time to finish broadcasting
-    await waitFor(() => true, { timeout: 100 })
 
     expect(onLifecycle.mock.calls).toEqual([
       [

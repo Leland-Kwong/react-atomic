@@ -1,36 +1,30 @@
-import Emittery from 'emittery';
-import { lifecycleStateChange, $$lifecycleChannel } from './constants';
-declare type Subscriptions<T> = Emittery<{
-    [key: Atom<T>['key']]: WatcherEventData;
-    [lifecycleStateChange]: WatcherEventData;
-} & {
-    [$$lifecycleChannel]: LifecycleEventData;
-}>;
+import { Channel } from './channels';
 export interface DbState {
     [key: string]: any;
 }
-export interface Db<T> {
+export interface LifecycleEventData {
+    type: string;
+    key: Atom<any>['key'];
+    state: Db['state'];
+    activeHooks: Readonly<Db['activeHooks']>;
+}
+export interface Db {
     state: Readonly<DbState>;
-    subscriptions: Subscriptions<T>;
+    stateChangeChannel: Channel<WatcherEventData>;
+    lifecycleChannel: Channel<LifecycleEventData>;
     activeHooks: {
         [atomKey: string]: number;
     };
     id: string;
 }
-export interface LifecycleEventData {
-    type: string;
-    key: Atom<any>['key'];
-    state: Db<any>['state'];
-    activeHooks: Readonly<Db<any>['activeHooks']>;
-}
 export declare type LifecycleFn = (data: LifecycleEventData) => void;
-interface WatcherEventData {
+export interface WatcherEventData {
     oldState: DbState;
     newState: DbState;
     atom: Atom<any>;
     updateFn: Function;
     updatePayload: any;
-    db: Db<any>;
+    db: Db;
 }
 export declare type WatcherFn = (data: WatcherEventData) => void;
 export interface AtomObserverProps {
@@ -60,4 +54,3 @@ export interface Atom<T> {
 }
 export declare type SelectorFn<State, SelectorValue> = (state: State) => SelectorValue;
 export declare type UpdateFn<State, Payload> = (state: State, payload: Payload) => State;
-export {};

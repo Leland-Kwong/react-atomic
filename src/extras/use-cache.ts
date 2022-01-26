@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 
 function shallowCompare(cache: any, value: any) {
   const maybeNewValue = value !== cache
@@ -33,21 +33,34 @@ function shallowCompare(cache: any, value: any) {
  * unecessary rerenders.
  */
 export function useIsNew<X, Y>(
-  fn: (x: X) => Y,
+  inputFn: (x: X) => Y,
   isNewValue: (prev: Y, next: Y) => boolean = shallowCompare
-) {
+): (x: X) => Y {
   const cache = useRef<Y | null>(null)
+  const args = { fn: inputFn, isNewValue }
+  const argsRef = useRef(args)
+  argsRef.current = args
 
-  return (x: X) => {
-    const next = fn(x)
-    const shouldUpdateCache =
-      cache.current === null ||
-      isNewValue(cache.current, next)
+  const newFn = useMemo(() => {
+    function wrappedFn(x: X) {
+      const next = argsRef.current.fn(x)
+      const shouldUpdateCache =
+        cache.current === null ||
+        argsRef.current.isNewValue(cache.current, next)
 
-    if (shouldUpdateCache) {
-      cache.current = next
+      if (shouldUpdateCache) {
+        cache.current = next
+      }
+
+      return cache.current as Y
     }
 
-    return cache.current as Y
-  }
+    return wrappedFn
+  }, [])
+
+  Object.defineProperty(newFn, 'name', {
+    value: inputFn.name
+  })
+
+  return newFn
 }

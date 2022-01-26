@@ -46,31 +46,25 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getState = exports.setState = exports.emitLifecycleEvent = exports.makeDb = void 0;
-var emittery_1 = __importDefault(require("emittery"));
+var channels_1 = require("./channels");
 var constants_1 = require("./constants");
 function makeDb(initialState) {
-    var subscriptions = new emittery_1.default();
     return {
         state: initialState,
-        subscriptions: subscriptions,
+        stateChangeChannel: (0, channels_1.channel)(),
+        lifecycleChannel: (0, channels_1.channel)(),
         activeHooks: {},
         id: (Math.random() * 1000).toString(32)
     };
 }
 exports.makeDb = makeDb;
-function numListeners(db, key) {
-    return db.subscriptions.listenerCount(key);
-}
 function emitLifecycleEvent(db, atom, type) {
-    if (numListeners(db, constants_1.$$lifecycleChannel) === 0) {
-        return Promise.resolve();
+    if ((0, channels_1.subscriberCount)(db.lifecycleChannel) === 0) {
+        return;
     }
-    return db.subscriptions.emit(constants_1.$$lifecycleChannel, {
+    (0, channels_1.emit)(db.lifecycleChannel, {
         type: type,
         key: atom.key,
         state: getState(db),
@@ -92,10 +86,9 @@ function setState(db, newState, atom, updateFn, updatePayload) {
                 db: db
             };
             db.state = newState;
-            return [2 /*return*/, Promise.all([
-                    db.subscriptions.emit(atom.key, eventData),
-                    emitLifecycleEvent(db, atom, constants_1.lifecycleStateChange)
-                ])];
+            (0, channels_1.emit)(db.stateChangeChannel, eventData);
+            emitLifecycleEvent(db, atom, constants_1.lifecycleStateChange);
+            return [2 /*return*/];
         });
     });
 }

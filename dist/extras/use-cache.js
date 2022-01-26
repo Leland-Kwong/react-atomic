@@ -29,17 +29,27 @@ function shallowCompare(cache, value) {
  * determining if two different objects are equal to prevent
  * unecessary rerenders.
  */
-function useIsNew(fn, isNewValue) {
+function useIsNew(inputFn, isNewValue) {
     if (isNewValue === void 0) { isNewValue = shallowCompare; }
     var cache = (0, react_1.useRef)(null);
-    return function (x) {
-        var next = fn(x);
-        var shouldUpdateCache = cache.current === null ||
-            isNewValue(cache.current, next);
-        if (shouldUpdateCache) {
-            cache.current = next;
+    var args = { fn: inputFn, isNewValue: isNewValue };
+    var argsRef = (0, react_1.useRef)(args);
+    argsRef.current = args;
+    var newFn = (0, react_1.useMemo)(function () {
+        function wrappedFn(x) {
+            var next = argsRef.current.fn(x);
+            var shouldUpdateCache = cache.current === null ||
+                argsRef.current.isNewValue(cache.current, next);
+            if (shouldUpdateCache) {
+                cache.current = next;
+            }
+            return cache.current;
         }
-        return cache.current;
-    };
+        return wrappedFn;
+    }, []);
+    Object.defineProperty(newFn, 'name', {
+        value: inputFn.name
+    });
+    return newFn;
 }
 exports.useIsNew = useIsNew;

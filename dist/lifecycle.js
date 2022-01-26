@@ -11,10 +11,11 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useOnLifecycle = exports.useHookLifecycle = void 0;
+exports.useOnLifecycle = exports.hookLifecycle = void 0;
 var react_1 = require("react");
 var db_1 = require("./db");
 var constants_1 = require("./constants");
+var channels_1 = require("./channels");
 var root_context_1 = require("./root-context");
 var utils_1 = require("./utils");
 var onLifecycleDefaults = {
@@ -22,7 +23,7 @@ var onLifecycleDefaults = {
         return true;
     }
 };
-function cleanupRef(db, atom) {
+function cleanupAtom(db, atom) {
     var key = atom.key, resetOnInactive = atom.resetOnInactive;
     if (!resetOnInactive) {
         return;
@@ -42,31 +43,28 @@ function isAtomActive(db, atom) {
     return db.activeHooks[atom.key] > 0;
 }
 /**
- * Tracks hook info and triggers mount/unmount lifecycle
- * events.
+ * Tracks hook info, triggers mount/unmount lifecycle
+ * events, and handles any atom cleanup as necessary.
  */
-function useHookLifecycle(atom, hookType) {
-    var db = (0, utils_1.useDb)();
+function hookLifecycle(db, atom, lifecycleType) {
     var hasRetomicRoot = db !== root_context_1.defaultContext;
     if (!hasRetomicRoot) {
         throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `RetomicRoot` component'));
     }
-    var handleAtomLifecycleState = function () {
+    if (lifecycleType === constants_1.lifecycleMount) {
         db.activeHooks[atom.key] =
             (db.activeHooks[atom.key] || 0) + 1;
-        (0, db_1.emitLifecycleEvent)(db, atom, constants_1.lifecycleMount);
-        return function () {
-            db.activeHooks[atom.key] -= 1;
-            if (!isAtomActive(db, atom)) {
-                delete db.activeHooks[atom.key];
-                cleanupRef(db, atom);
-            }
-            (0, db_1.emitLifecycleEvent)(db, atom, constants_1.lifecycleUnmount);
-        };
-    };
-    (0, react_1.useEffect)(handleAtomLifecycleState, [db, atom, hookType]);
+    }
+    if (lifecycleType === constants_1.lifecycleUnmount) {
+        db.activeHooks[atom.key] -= 1;
+        if (!isAtomActive(db, atom)) {
+            delete db.activeHooks[atom.key];
+            cleanupAtom(db, atom);
+        }
+    }
+    (0, db_1.emitLifecycleEvent)(db, atom, lifecycleType);
 }
-exports.useHookLifecycle = useHookLifecycle;
+exports.hookLifecycle = hookLifecycle;
 /**
  * @public
  * A react hook for observing retomic lifecycle changes
@@ -75,13 +73,13 @@ function useOnLifecycle(fn, predicate) {
     if (predicate === void 0) { predicate = onLifecycleDefaults.predicate; }
     var db = (0, utils_1.useDb)();
     (0, react_1.useEffect)(function () {
-        var unsubscribe = db.subscriptions.on(constants_1.$$lifecycleChannel, function (data) {
+        var id = (0, channels_1.subscribe)(db.lifecycleChannel, function (data) {
             if (!predicate(data)) {
                 return;
             }
             fn(data);
         });
-        return unsubscribe;
+        return function () { return (0, channels_1.unsubscribe)(db.lifecycleChannel, id); };
     }, [db, fn, predicate]);
 }
 exports.useOnLifecycle = useOnLifecycle;

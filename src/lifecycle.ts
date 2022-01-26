@@ -6,10 +6,10 @@ import {
 } from './db'
 import type { Atom, Db, LifecycleEventData } from './types'
 import {
-  $$lifecycleChannel,
   lifecycleMount,
   lifecycleUnmount
 } from './constants'
+import { subscribe, unsubscribe } from './channels'
 import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
@@ -19,7 +19,7 @@ const onLifecycleDefaults = {
   }
 }
 
-function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
+function cleanupAtom<T>(db: Db, atom: Atom<T>) {
   const { key, resetOnInactive } = atom
 
   if (!resetOnInactive) {
@@ -45,19 +45,21 @@ function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
   )
 }
 
-function isAtomActive<T>(db: Db<T>, atom: Atom<T>) {
+function isAtomActive<T>(db: Db, atom: Atom<T>) {
   return db.activeHooks[atom.key] > 0
 }
 
 /**
- * Tracks hook info and triggers mount/unmount lifecycle
- * events.
+ * Tracks hook info, triggers mount/unmount lifecycle
+ * events, and handles any atom cleanup as necessary.
  */
-export function useHookLifecycle(
+export function hookLifecycle(
+  db: Db,
   atom: Atom<any>,
-  hookType: 'read' | 'send'
+  lifecycleType:
+    | typeof lifecycleMount
+    | typeof lifecycleUnmount
 ) {
-  const db = useDb()
   const hasRetomicRoot = db !== defaultContext
 
   if (!hasRetomicRoot) {
@@ -68,35 +70,32 @@ export function useHookLifecycle(
     )
   }
 
-  const handleAtomLifecycleState = () => {
+  if (lifecycleType === lifecycleMount) {
     db.activeHooks[atom.key] =
       (db.activeHooks[atom.key] || 0) + 1
-    emitLifecycleEvent(db, atom, lifecycleMount)
+  }
 
-    return () => {
-      db.activeHooks[atom.key] -= 1
+  if (lifecycleType === lifecycleUnmount) {
+    db.activeHooks[atom.key] -= 1
 
-      if (!isAtomActive(db, atom)) {
-        delete db.activeHooks[atom.key]
-        cleanupRef(db, atom)
-      }
-
-      emitLifecycleEvent(db, atom, lifecycleUnmount)
+    if (!isAtomActive(db, atom)) {
+      delete db.activeHooks[atom.key]
+      cleanupAtom(db, atom)
     }
   }
 
-  useEffect(handleAtomLifecycleState, [db, atom, hookType])
+  emitLifecycleEvent(db, atom, lifecycleType)
 }
 
 /**
  * @public
  * A react hook for observing retomic lifecycle changes
  */
-export function useOnLifecycle<T>(
+export function useOnLifecycle(
   fn: (data: {
     type: string
-    activeHooks: Db<T>['activeHooks']
-    state: Db<T>['state']
+    activeHooks: Db['activeHooks']
+    state: Db['state']
   }) => void,
   predicate: (
     data: LifecycleEventData
@@ -105,17 +104,14 @@ export function useOnLifecycle<T>(
   const db = useDb()
 
   useEffect(() => {
-    const unsubscribe = db.subscriptions.on(
-      $$lifecycleChannel,
-      (data) => {
-        if (!predicate(data)) {
-          return
-        }
-
-        fn(data)
+    const id = subscribe(db.lifecycleChannel, (data) => {
+      if (!predicate(data)) {
+        return
       }
-    )
 
-    return unsubscribe
+      fn(data)
+    })
+
+    return () => unsubscribe(db.lifecycleChannel, id)
   }, [db, fn, predicate])
 }

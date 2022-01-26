@@ -1,5 +1,4 @@
-import dynamic from 'next/dynamic'
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
@@ -117,16 +116,6 @@ const AtomAppDemo = () => {
 }
 
 const Home: NextPage = () => {
-  const AtomDevTools = useMemo(
-    () =>
-      dynamic(
-        async () =>
-          (await import('../src/retomic')).AtomDevTools,
-        { ssr: false }
-      ),
-    []
-  )
-
   return (
     <div className={styles.container}>
       <Head>
@@ -144,7 +133,6 @@ const Home: NextPage = () => {
         <RetomicRoot>
           <MessageOnly />
           <AtomAppDemo />
-          <AtomDevTools />
         </RetomicRoot>
       </main>
     </div>

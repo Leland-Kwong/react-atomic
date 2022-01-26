@@ -6,4 +6,4 @@
  * determining if two different objects are equal to prevent
  * unecessary rerenders.
  */
-export declare function useIsNew<X, Y>(fn: (x: X) => Y, isNewValue?: (prev: Y, next: Y) => boolean): (x: X) => Y;
+export declare function useIsNew<X, Y>(inputFn: (x: X) => Y, isNewValue?: (prev: Y, next: Y) => boolean): (x: X) => Y;
