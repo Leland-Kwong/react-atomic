@@ -232,6 +232,35 @@ describe('extras', () => {
       expect(result.all.length).toBe(2)
     })
 
+    test('handles changing inputs', () => {
+      const initialProps = {
+        value: 'foo',
+        inputFn: ({ value }: { value: string }): any => ({
+          value
+        })
+      }
+      const { result, rerender } = renderHook(
+        ({ value, inputFn }) => {
+          const cachedFunction = useIsNew(
+            inputFn,
+            (prev, next) => prev !== next
+          )
+          return cachedFunction({ value })
+        },
+        {
+          wrapper,
+          initialProps
+        }
+      )
+
+      expect(result.current).toEqual({ value: 'foo' })
+      rerender({
+        value: 'foo',
+        inputFn: ({ value }) => value.length
+      })
+      expect(result.current).toBe(3)
+    })
+
     test('forwards function name', () => {
       function namedFn() {}
       const { result } = renderHook(
