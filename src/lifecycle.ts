@@ -19,7 +19,7 @@ const onLifecycleDefaults = {
   }
 }
 
-function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
+function cleanupRef<T>(db: Db, atom: Atom<T>) {
   const { key, resetOnInactive } = atom
 
   if (!resetOnInactive) {
@@ -45,7 +45,7 @@ function cleanupRef<T>(db: Db<T>, atom: Atom<T>) {
   )
 }
 
-function isAtomActive<T>(db: Db<T>, atom: Atom<T>) {
+function isAtomActive<T>(db: Db, atom: Atom<T>) {
   return db.activeHooks[atom.key] > 0
 }
 
@@ -95,8 +95,8 @@ export function useHookLifecycle(
 export function useOnLifecycle<T>(
   fn: (data: {
     type: string
-    activeHooks: Db<T>['activeHooks']
-    state: Db<T>['state']
+    activeHooks: Db['activeHooks']
+    state: Db['state']
   }) => void,
   predicate: (
     data: LifecycleEventData

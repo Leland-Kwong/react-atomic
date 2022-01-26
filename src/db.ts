@@ -1,4 +1,3 @@
-import Emittery from 'emittery'
 import { channel, emit, subscriberCount } from './channels'
 import {
   lifecycleStateChange,
@@ -7,13 +6,10 @@ import {
 } from './constants'
 import type { Atom, Db } from './types'
 
-export function makeDb<T>(initialState: T): Db<T> {
-  const subscriptions: Db<T>['subscriptions'] =
-    new Emittery()
-
+export function makeDb<T>(initialState: T): Db {
   return {
     state: initialState,
-    subscriptions,
+    stateChangeChannel: channel(),
     lifecycleChannel: channel(),
     activeHooks: {},
     id: (Math.random() * 1000).toString(32)
@@ -21,7 +17,7 @@ export function makeDb<T>(initialState: T): Db<T> {
 }
 
 export function emitLifecycleEvent<T>(
-  db: Db<T>,
+  db: Db,
   atom: Atom<T>,
   type:
     | typeof lifecycleMount
@@ -41,7 +37,7 @@ export function emitLifecycleEvent<T>(
 }
 
 export async function setState<T>(
-  db: Db<T>,
+  db: Db,
   newState: T,
   atom: Atom<T>,
   updateFn: Function,
@@ -58,13 +54,10 @@ export async function setState<T>(
   }
 
   db.state = newState
-
-  return Promise.all([
-    db.subscriptions.emit(atom.key, eventData),
-    emitLifecycleEvent(db, atom, lifecycleStateChange)
-  ])
+  emit(db.stateChangeChannel, eventData)
+  emitLifecycleEvent(db, atom, lifecycleStateChange)
 }
 
-export function getState<T>(db: Db<T>) {
+export function getState(db: Db) {
   return db.state
 }

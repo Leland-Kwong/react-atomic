@@ -55,7 +55,7 @@ describe('core', () => {
     expect(result.current).toBe(3)
   })
 
-  test('useSend', async () => {
+  test('useSend', () => {
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
@@ -77,11 +77,11 @@ describe('core', () => {
       { wrapper }
     )
 
-    await act(async () => {
-      await result.current.sendAtom2(setTestState2, 'bar2')
+    act(() => {
+      result.current.sendAtom2(setTestState2, 'bar2')
     })
-    await act(async () => {
-      await result.current.sendAtom(setTestState, 'baz')
+    act(() => {
+      result.current.sendAtom(setTestState, 'baz')
     })
 
     expect(result.current.readValue2).toBe('bar2')
@@ -90,7 +90,7 @@ describe('core', () => {
     })
   })
 
-  test('useReset', async () => {
+  test('useReset', () => {
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
@@ -110,11 +110,11 @@ describe('core', () => {
       { wrapper }
     )
 
-    await act(async () => {
-      await result.current.sendAtom(setTestState, 'bar')
+    act(() => {
+      result.current.sendAtom(setTestState, 'bar')
     })
-    await act(async () => {
-      await result.current.resetAtom()
+    act(() => {
+      result.current.resetAtom()
     })
 
     expect(result.current.readValue).toBe(ref.defaultState)
@@ -238,7 +238,7 @@ describe('lifecycle', () => {
     </RetomicRoot>
   )
   const identity = (d: any) => d
-  test('properly manages listeners and state on mount/unmount', async () => {
+  test('properly manages listeners and state on mount/unmount', () => {
     const atomToTest = ref2
     const onLifecycle = jest.fn()
     function Lifecycle() {
@@ -261,8 +261,8 @@ describe('lifecycle', () => {
       }
     )
 
-    await act(async () => {
-      await result.current.sendAtom(setTestState2, 'bar')
+    act(() => {
+      result.current.sendAtom(setTestState2, 'bar')
     })
     rerender({
       done: true,
@@ -329,7 +329,7 @@ describe('lifecycle', () => {
     ])
   })
 
-  test('resetOnInactive option disabled', async () => {
+  test('resetOnInactive option disabled', () => {
     const atomToTest = atom({
       key: 'atomToTest',
       defaultState: '',
@@ -355,9 +355,9 @@ describe('lifecycle', () => {
       }
     )
 
-    await act(async () => {
+    act(() => {
       const setTo = (_: string, newNum: string) => newNum
-      await result.current.sendAtom(setTo, 'foo')
+      result.current.sendAtom(setTo, 'foo')
     })
     rerender({
       done: true,

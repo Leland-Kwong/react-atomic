@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  noop,
-  lifecycleStateChange,
-  $$lifecycleChannel
-} from './constants'
+import { noop } from './constants'
 import { useDb } from './utils'
+import { subscribe, unsubscribe } from './channels'
 import {
   AtomObserverProps,
   DevToolsLogEntry,
@@ -24,19 +21,18 @@ function AtomObserver({
       onLifecycle(data)
     }
 
-    const subscriptions = [
-      rootDb.subscriptions.on(
-        lifecycleStateChange,
-        onChange
-      ),
-      rootDb.subscriptions.on(
-        $$lifecycleChannel,
-        onLifecycleWrapper
-      )
-    ]
+    const id1 = subscribe(
+      rootDb.stateChangeChannel,
+      onChange
+    )
+    const id2 = subscribe(
+      rootDb.lifecycleChannel,
+      onLifecycleWrapper
+    )
 
     return () => {
-      subscriptions.forEach((unsubscribe) => unsubscribe())
+      unsubscribe(rootDb.stateChangeChannel, id1)
+      unsubscribe(rootDb.lifecycleChannel, id2)
     }
   }, [onChange, onLifecycle, rootDb])
 

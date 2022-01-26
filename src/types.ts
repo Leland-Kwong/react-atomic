@@ -1,12 +1,4 @@
-import Emittery from 'emittery'
 import { Channel } from './channels'
-
-import { lifecycleStateChange } from './constants'
-
-type Subscriptions<T> = Emittery<{
-  [key: Atom<T>['key']]: WatcherEventData
-  [lifecycleStateChange]: WatcherEventData
-}>
 
 export interface DbState {
   [key: string]: any
@@ -15,13 +7,13 @@ export interface DbState {
 export interface LifecycleEventData {
   type: string
   key: Atom<any>['key']
-  state: Db<any>['state']
-  activeHooks: Readonly<Db<any>['activeHooks']>
+  state: Db['state']
+  activeHooks: Readonly<Db['activeHooks']>
 }
 
-export interface Db<T> {
+export interface Db {
   state: Readonly<DbState>
-  subscriptions: Subscriptions<T>
+  stateChangeChannel: Channel<WatcherEventData>
   lifecycleChannel: Channel<LifecycleEventData>
   // hook counts
   activeHooks: {
@@ -38,7 +30,7 @@ interface WatcherEventData {
   atom: Atom<any>
   updateFn: Function
   updatePayload: any
-  db: Db<any>
+  db: Db
 }
 
 export type WatcherFn = (data: WatcherEventData) => void

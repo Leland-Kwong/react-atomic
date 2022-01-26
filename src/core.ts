@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { subscribe, unsubscribe } from './channels'
 import { getState, setState } from './db'
 import { useHookLifecycle } from './lifecycle'
 import type {
@@ -82,7 +83,11 @@ export function useRead<T, SelectorValue = T>(
       setHookState(nextValue)
     }
 
-    return rootDb.subscriptions.on(key, watcherFn)
+    const id = subscribe(
+      rootDb.stateChangeChannel,
+      watcherFn
+    )
+    return () => unsubscribe(rootDb.stateChangeChannel, id)
   }, [rootDb, key, defaultState, atom])
   useHookLifecycle(atom, 'read')
 
