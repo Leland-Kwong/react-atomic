@@ -14,7 +14,8 @@ export function makeDb<T>(initialState: T): Db<T> {
   return {
     state: initialState,
     subscriptions,
-    activeHooks: {}
+    activeHooks: {},
+    id: (Math.random() * 1000).toString(32)
   }
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getState, setState } from './db'
 import { useHookLifecycle } from './lifecycle'
 import type {
@@ -48,7 +48,21 @@ export function useRead<T, SelectorValue = T>(
   const [hookState, setHookState] = useState(
     selector(defaultTo(defaultState, initialStateSlice))
   )
+  /**
+   * IMPORTANT
+   * We're using a ref to store the selector to prevent the
+   * effect callback from rerunning each render cycle. This
+   * can happen if the selector function provided is an
+   * inline function which can cause some strange edge
+   * cases (like change events not being registered. This
+   * could be due to the async event emitter we're using,
+   * but we need to investigate this).
+   */
+  const selectorRef = useRef(selector)
 
+  useEffect(() => {
+    selectorRef.current = selector
+  })
   useEffect(() => {
     const watcherFn: WatcherFn = ({
       oldState,
@@ -56,7 +70,7 @@ export function useRead<T, SelectorValue = T>(
     }) => {
       const prev = oldState[key]
       const stateSlice = newState[key]
-      const nextValue = selector(
+      const nextValue = selectorRef.current(
         defaultTo(defaultState, stateSlice)
       )
       const hasChanged = prev !== nextValue
@@ -69,7 +83,7 @@ export function useRead<T, SelectorValue = T>(
     }
 
     return rootDb.subscriptions.on(key, watcherFn)
-  }, [rootDb, key, selector, defaultState, atom])
+  }, [rootDb, key, defaultState, atom])
   useHookLifecycle(atom, 'read')
 
   return hookState
