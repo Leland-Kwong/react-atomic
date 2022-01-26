@@ -12,7 +12,7 @@ function AtomObserver({
   onChange,
   onLifecycle = noop
 }: AtomObserverProps) {
-  const rootDb = useDb()
+  const db = useDb()
 
   useEffect(() => {
     const onLifecycleWrapper = (
@@ -21,20 +21,17 @@ function AtomObserver({
       onLifecycle(data)
     }
 
-    const id1 = subscribe(
-      rootDb.stateChangeChannel,
-      onChange
-    )
+    const id1 = subscribe(db.stateChangeChannel, onChange)
     const id2 = subscribe(
-      rootDb.lifecycleChannel,
+      db.lifecycleChannel,
       onLifecycleWrapper
     )
 
     return () => {
-      unsubscribe(rootDb.stateChangeChannel, id1)
-      unsubscribe(rootDb.lifecycleChannel, id2)
+      unsubscribe(db.stateChangeChannel, id1)
+      unsubscribe(db.lifecycleChannel, id2)
     }
-  }, [onChange, onLifecycle, rootDb])
+  }, [onChange, onLifecycle, db])
 
   return null
 }

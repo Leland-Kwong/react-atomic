@@ -52,8 +52,8 @@ export function useRead<T, SelectorValue = T>(
   selector: SelectorFn<T, SelectorValue>
 ): SelectorValue {
   const { key, defaultState } = atom
-  const rootDb = useDb()
-  const initialStateSlice = getState(rootDb)[key]
+  const db = useDb()
+  const initialStateSlice = getState(db)[key]
   const [, update] = useReducer(updateReadReducer, 0)
   const selectorValue = useRef(
     undefined as unknown as SelectorValue
@@ -74,7 +74,7 @@ export function useRead<T, SelectorValue = T>(
    */
   selectorRef.current = selector
   useEffect(() => {
-    hookLifecycle(rootDb, atom, lifecycleMount)
+    hookLifecycle(db, atom, lifecycleMount)
 
     const watcherFn: WatcherFn = ({
       oldState,
@@ -95,29 +95,25 @@ export function useRead<T, SelectorValue = T>(
       update()
     }
 
-    const id = subscribe(
-      rootDb.stateChangeChannel,
-      watcherFn
-    )
+    const id = subscribe(db.stateChangeChannel, watcherFn)
 
     return () => {
-      unsubscribe(rootDb.stateChangeChannel, id)
-      hookLifecycle(rootDb, atom, lifecycleUnmount)
+      unsubscribe(db.stateChangeChannel, id)
+      hookLifecycle(db, atom, lifecycleUnmount)
     }
-  }, [rootDb, key, defaultState, atom])
+  }, [db, key, defaultState, atom])
 
   return selectorValue.current
 }
 
 export function useSend<T>(atom: Atom<T>) {
-  const rootDb = useDb()
+  const db = useDb()
 
   useEffect(() => {
-    hookLifecycle(rootDb, atom, lifecycleMount)
+    hookLifecycle(db, atom, lifecycleMount)
 
-    return () =>
-      hookLifecycle(rootDb, atom, lifecycleUnmount)
-  }, [rootDb, atom])
+    return () => hookLifecycle(db, atom, lifecycleUnmount)
+  }, [db, atom])
 
   return useMemo(
     () =>
@@ -136,7 +132,7 @@ export function useSend<T>(atom: Atom<T>) {
         }
 
         const { key, defaultState } = atom
-        const rootState = getState(rootDb)
+        const rootState = getState(db)
         const stateSlice = defaultTo(
           defaultState,
           rootState[key]
@@ -147,14 +143,14 @@ export function useSend<T>(atom: Atom<T>) {
         }
 
         return setState(
-          rootDb,
+          db,
           nextState,
           atom,
           updateFn,
           payload
         )
       },
-    [rootDb, atom]
+    [db, atom]
   )
 }
 
