@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import {
   emitLifecycleEvent,
   getState,
@@ -14,8 +14,8 @@ import { defaultContext } from './root-context'
 import { errorMsg, useDb } from './utils'
 
 const onLifecycleDefaults = {
-  predicate<T>({ key }: LifecycleEventData, atom: Atom<T>) {
-    return key === atom.key
+  predicate() {
+    return true
   }
 }
 
@@ -93,36 +93,29 @@ export function useHookLifecycle(
  * A react hook for observing retomic lifecycle changes
  */
 export function useOnLifecycle<T>(
-  atom: Atom<T>,
   fn: (data: {
     type: string
     activeHooks: Db<T>['activeHooks']
     state: Db<T>['state']
   }) => void,
   predicate: (
-    data: LifecycleEventData,
-    atom: Atom<T>
+    data: LifecycleEventData
   ) => boolean = onLifecycleDefaults.predicate
 ) {
   const db = useDb()
-  const unsubscribe = useMemo(() => {
-    return db.subscriptions.on(
+
+  useEffect(() => {
+    const unsubscribe = db.subscriptions.on(
       $$lifeCycleChannel,
       (data) => {
-        const { type, state, activeHooks } = data
-
-        if (!predicate(data, atom)) {
+        if (!predicate(data)) {
           return
         }
 
-        fn({
-          type,
-          activeHooks,
-          state
-        })
+        fn(data)
       }
     )
-  }, [db, fn, predicate, atom])
 
-  return unsubscribe
+    return unsubscribe
+  }, [db, fn, predicate])
 }

@@ -1,8 +1,7 @@
 import React from 'react'
 import {
   renderHook,
-  act,
-  cleanup
+  act
 } from '@testing-library/react-hooks'
 import {
   atom,
@@ -33,11 +32,6 @@ const ref = atom<State>({
 const ref2 = atom<State2>({
   key: 'test2',
   defaultState: 'foo2'
-})
-const atomNoAutoReset = atom({
-  key: 'atomNoAutoReset',
-  defaultState: '',
-  resetOnInactive: false
 })
 
 describe('core', () => {
@@ -219,35 +213,65 @@ describe('extras', () => {
 })
 
 describe('lifecycle', () => {
+  const wrapper = ({
+    children,
+    done,
+    Lifecycle
+  }: {
+    children?: any
+    done: boolean
+    Lifecycle: any
+  }) => (
+    <RetomicRoot>
+      {/* We need to render the lifecycle hook separately so
+      we it can capture the child hooks' unmount events otherwise
+      it will unmount before they happen. */}
+      <Lifecycle />
+      {!done && children}
+    </RetomicRoot>
+  )
+  const identity = (d: any) => d
   test('properly manages listeners and state on mount/unmount', async () => {
+    const atomToTest = ref2
     const onLifecycle = jest.fn()
-    const lifeCycleWatcher = (d: any) => d
-    const wrapper = ({ children }: { children?: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const { result } = renderHook(
+    function Lifecycle() {
+      useOnLifecycle(onLifecycle)
+      return null
+    }
+    const { result, rerender, waitFor } = renderHook(
       () => {
-        useOnLifecycle(ref2, onLifecycle)
-
         return {
-          readValue: useRead(ref2, lifeCycleWatcher),
+          readValue: useRead(ref2, identity),
           sendAtom: useSend(ref2)
         }
       },
-      { wrapper }
+      {
+        wrapper,
+        initialProps: {
+          done: false,
+          Lifecycle
+        }
+      }
     )
 
     await act(async () => {
       await result.current.sendAtom(setTestState2, 'bar')
     })
-    await cleanup()
+    rerender({
+      done: true,
+      Lifecycle
+    })
+    // the event emitter we're using is async, so we need to
+    // give the lifecycle events time to finish broadcasting
+    await waitFor(() => true, { timeout: 100 })
 
     expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
-            [ref2.key]: 1
+            [atomToTest.key]: 1
           },
+          key: atomToTest.key,
           type: 'mount',
           state: {}
         }
@@ -255,8 +279,9 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [ref2.key]: 2
+            [atomToTest.key]: 2
           },
+          key: atomToTest.key,
           type: 'mount',
           state: {}
         }
@@ -264,24 +289,27 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [ref2.key]: 2
+            [atomToTest.key]: 2
           },
+          key: atomToTest.key,
           type: 'stateChange',
-          state: { [ref2.key]: 'bar' }
+          state: { [atomToTest.key]: 'bar' }
         }
       ],
       [
         {
           activeHooks: {
-            [ref2.key]: 1
+            [atomToTest.key]: 1
           },
+          key: atomToTest.key,
           type: 'unmount',
-          state: { [ref2.key]: 'bar' }
+          state: { [atomToTest.key]: 'bar' }
         }
       ],
       [
         {
           activeHooks: {},
+          key: atomToTest.key,
           type: 'stateChange',
           state: {}
         }
@@ -289,6 +317,7 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {},
+          key: atomToTest.key,
           type: 'unmount',
           state: {}
         }
@@ -297,33 +326,50 @@ describe('lifecycle', () => {
   })
 
   test('resetOnInactive option disabled', async () => {
+    const atomToTest = atom({
+      key: 'atomToTest',
+      defaultState: '',
+      resetOnInactive: false
+    })
     const onLifecycle = jest.fn()
-    const wrapper = ({ children }: { children?: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-    const { result } = renderHook(
+    function Lifecycle() {
+      useOnLifecycle(onLifecycle)
+      return null
+    }
+    const { result, rerender, waitFor } = renderHook(
       () => {
-        useOnLifecycle(atomNoAutoReset, onLifecycle)
-
         return {
-          sendAtom: useSend(atomNoAutoReset)
+          sendAtom: useSend(atomToTest)
         }
       },
-      { wrapper }
+      {
+        wrapper,
+        initialProps: {
+          done: false,
+          Lifecycle
+        }
+      }
     )
 
     await act(async () => {
       const setTo = (_: string, newNum: string) => newNum
       await result.current.sendAtom(setTo, 'foo')
     })
-    await cleanup()
+    rerender({
+      done: true,
+      Lifecycle
+    })
+    // the event emitter we're using is async, so we need to
+    // give the lifecycle events time to finish broadcasting
+    await waitFor(() => true, { timeout: 100 })
 
     expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
-            [atomNoAutoReset.key]: 1
+            [atomToTest.key]: 1
           },
+          key: atomToTest.key,
           type: 'mount',
           state: {}
         }
@@ -331,20 +377,22 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [atomNoAutoReset.key]: 1
+            [atomToTest.key]: 1
           },
+          key: atomToTest.key,
           type: 'stateChange',
           state: {
-            [atomNoAutoReset.key]: 'foo'
+            [atomToTest.key]: 'foo'
           }
         }
       ],
       [
         {
           activeHooks: {},
+          key: atomToTest.key,
           type: 'unmount',
           state: {
-            [atomNoAutoReset.key]: 'foo'
+            [atomToTest.key]: 'foo'
           }
         }
       ]
