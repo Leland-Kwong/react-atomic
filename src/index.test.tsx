@@ -61,6 +61,16 @@ describe('core', () => {
       expect(result.current).toBe('foo')
     })
 
+    test('different selector with same object equality should return same reference', () => {
+      const { result, rerender } = renderHook(
+        () => useRead(ref, ({ text }) => ({ text })),
+        { wrapper }
+      )
+
+      rerender()
+      expect(result.all[0]).toBe(result.current)
+    })
+
     test('only updates when change matches atom key', () => {
       const selector1 = jest.fn()
       const selector2 = jest.fn()
@@ -85,7 +95,7 @@ describe('core', () => {
       expect(selector2.mock.calls.length).toBe(1)
     })
 
-    test('custom isEqual function', () => {
+    describe('custom isEqual function', () => {
       const selector1 = jest.fn((d) => d)
       const renderCallback = jest.fn()
       const { result } = renderHook(
