@@ -1,6 +1,6 @@
 # Retomic
 
-Retomic is a reactive state management system for React. The idea is to atomically update the state inspired by [clojure's atoms](https://clojure.org/reference/atoms).
+Retomic is a reactive state management system for React. The idea for this library is based on the idea of [clojure's atoms](https://clojure.org/reference/atoms).
 
 ## Installation
 
