@@ -14,7 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useReset = exports.useSend = exports.useRead = exports.atom = exports.useOnLifecycle = exports.RetomicRoot = void 0;
+exports.useReset = exports.useSend = exports.useRead = exports.createAtom = exports.useOnLifecycle = exports.RetomicRoot = void 0;
 var shallowequal_1 = __importDefault(require("shallowequal"));
 var react_1 = require("react");
 var channels_1 = require("./channels");
@@ -32,7 +32,7 @@ var RetomicRoot_1 = require("./RetomicRoot");
 Object.defineProperty(exports, "RetomicRoot", { enumerable: true, get: function () { return RetomicRoot_1.RetomicRoot; } });
 var lifecycle_2 = require("./lifecycle");
 Object.defineProperty(exports, "useOnLifecycle", { enumerable: true, get: function () { return lifecycle_2.useOnLifecycle; } });
-function atom(_a) {
+function createAtom(_a) {
     var key = _a.key, defaultState = _a.defaultState, _b = _a.resetOnInactive, resetOnInactive = _b === void 0 ? true : _b;
     return {
         key: key,
@@ -40,7 +40,7 @@ function atom(_a) {
         resetOnInactive: resetOnInactive
     };
 }
-exports.atom = atom;
+exports.createAtom = createAtom;
 var updateReadReducer = function (toggleNum) {
     return toggleNum ? 0 : 1;
 };
