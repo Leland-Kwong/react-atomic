@@ -32,7 +32,7 @@ export type { Atom, SelectorFn, UpdateFn } from './types'
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
-export function atom<T>({
+export function createAtom<T>({
   key,
   defaultState,
   resetOnInactive = true
