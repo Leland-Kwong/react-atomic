@@ -47,7 +47,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getState = exports.setState = exports.emitLifecycleEvent = exports.makeDb = void 0;
+exports.emitLifecycleEvent = exports.getState = exports.setState = exports.makeDb = void 0;
 var channels_1 = require("./channels");
 var constants_1 = require("./constants");
 function makeDb(initialState) {
@@ -60,18 +60,6 @@ function makeDb(initialState) {
     };
 }
 exports.makeDb = makeDb;
-function emitLifecycleEvent(db, atom, type) {
-    if ((0, channels_1.subscriberCount)(db.lifecycleChannel) === 0) {
-        return;
-    }
-    (0, channels_1.emit)(db.lifecycleChannel, {
-        type: type,
-        key: atom.key,
-        state: getState(db),
-        activeHooks: __assign({}, db.activeHooks)
-    });
-}
-exports.emitLifecycleEvent = emitLifecycleEvent;
 function setState(db, newState, atom, updateFn, updatePayload) {
     return __awaiter(this, void 0, void 0, function () {
         var oldState, eventData;
@@ -97,3 +85,15 @@ function getState(db) {
     return db.state;
 }
 exports.getState = getState;
+function emitLifecycleEvent(db, atom, type) {
+    if ((0, channels_1.subscriberCount)(db.lifecycleChannel) === 0) {
+        return;
+    }
+    (0, channels_1.emit)(db.lifecycleChannel, {
+        type: type,
+        key: atom.key,
+        state: getState(db),
+        activeHooks: __assign({}, db.activeHooks)
+    });
+}
+exports.emitLifecycleEvent = emitLifecycleEvent;

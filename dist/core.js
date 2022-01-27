@@ -104,7 +104,7 @@ function useSend(atom) {
             var _a;
             if (process.env.NODE_ENV === 'development' &&
                 !updateFn.name) {
-                console.error('Warning: This update function should be named -', updateFn);
+                console.error((0, utils_1.logMsg)('This update function should be named -', 'warning'), updateFn);
             }
             var key = atom.key, defaultState = atom.defaultState;
             var rootState = (0, db_1.getState)(db);
