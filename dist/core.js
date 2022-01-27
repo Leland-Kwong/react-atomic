@@ -10,8 +10,12 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useReset = exports.useSend = exports.useRead = exports.atom = exports.useOnLifecycle = exports.RetomicRoot = void 0;
+var shallowequal_1 = __importDefault(require("shallowequal"));
 var react_1 = require("react");
 var channels_1 = require("./channels");
 var db_1 = require("./db");
@@ -40,13 +44,16 @@ exports.atom = atom;
 var updateReadReducer = function (toggleNum) {
     return toggleNum ? 0 : 1;
 };
-function useRead(atom, selector) {
+function useRead(atom, selector, isEqual) {
+    if (isEqual === void 0) { isEqual = shallowequal_1.default; }
     var key = atom.key, defaultState = atom.defaultState;
     var db = (0, utils_1.useDb)();
     var _a = (0, react_1.useReducer)(updateReadReducer, 0), update = _a[1];
     var selectorValue = (0, react_1.useRef)(undefined);
     var selectorRef = (0, react_1.useRef)(undefined);
+    var isEqualRef = (0, react_1.useRef)(undefined);
     var isNewSelector = selectorRef.current !== selector;
+    isEqualRef.current = isEqual;
     if (isNewSelector) {
         var stateSlice = (0, db_1.getState)(db)[key];
         selectorValue.current = selector(defaultTo(defaultState, stateSlice));
@@ -66,7 +73,7 @@ function useRead(atom, selector) {
             }
             var prev = selectorValue.current;
             var next = selectorRef.current(defaultTo(defaultState, newState[key]));
-            var hasChanged = prev !== next;
+            var hasChanged = next !== prev && !isEqualRef.current(prev, next);
             if (!hasChanged) {
                 return;
             }
