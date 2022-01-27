@@ -18,7 +18,7 @@ import type {
   UpdateFn,
   WatcherFn
 } from './types'
-import { useDb } from './utils'
+import { logMsg, useDb } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -150,7 +150,10 @@ export function useSend<T>(atom: Atom<T>) {
           !updateFn.name
         ) {
           console.error(
-            'Warning: This update function should be named -',
+            logMsg(
+              'This update function should be named -',
+              'warning'
+            ),
             updateFn
           )
         }
