@@ -11,7 +11,7 @@ import {
 } from './constants'
 import { subscribe, unsubscribe } from './channels'
 import { defaultContext } from './root-context'
-import { errorMsg, useDb } from './utils'
+import { logMsg, useDb } from './utils'
 
 const onLifecycleDefaults = {
   predicate() {
@@ -64,7 +64,7 @@ export function hookLifecycle(
 
   if (!hasRetomicRoot) {
     throw new Error(
-      errorMsg(
+      logMsg(
         'Application tree must be wrapped in an `RetomicRoot` component'
       )
     )

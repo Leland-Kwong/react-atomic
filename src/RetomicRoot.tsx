@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { makeDb } from './db'
 import type { ReactChild } from 'react'
 import { defaultContext, RootContext } from './root-context'
-import { errorMsg, useDb } from './utils'
+import { logMsg, useDb } from './utils'
 import type { DbState } from './types'
 
 export function RetomicRoot({
@@ -15,7 +15,7 @@ export function RetomicRoot({
 
   if (isNestedRetomicRoot) {
     throw new Error(
-      errorMsg(
+      logMsg(
         'Application tree may only be wrapped in a single `RetomicRoot` component'
       )
     )
