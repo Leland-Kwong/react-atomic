@@ -197,7 +197,6 @@ describe('extras', () => {
     const wrapper = ({ children }: { children?: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
-
     test('primitive compare', () => {
       const { result, rerender } = renderHook(
         (props) => {
@@ -219,27 +218,6 @@ describe('extras', () => {
       expect(result.all.length).toBe(3)
     })
 
-    test('shallow compare', () => {
-      const { result, rerender } = renderHook(
-        (props) => {
-          const cachedFunction = useIsNew(
-            ({ value }: { value: string }) => ({ value })
-          )
-          return cachedFunction({ value: props.value })
-        },
-        {
-          wrapper,
-          initialProps: { value: 'foo' }
-        }
-      )
-
-      rerender({ value: 'foo' })
-      expect(result.all[0]).toBe(result.all[1])
-      rerender({ value: 'bar' })
-      expect(result.all[1]).not.toBe(result.all[2])
-      expect(result.all.length).toBe(3)
-    })
-
     test('custom compare', () => {
       const { result, rerender } = renderHook(
         (props) => {
@@ -247,7 +225,7 @@ describe('extras', () => {
             ({ value }: { value: string }) => ({
               value
             }),
-            (prev, next) => prev !== next
+            (prev, next) => prev === next
           )
           return cachedFunction({ value: props.value })
         },
@@ -262,7 +240,7 @@ describe('extras', () => {
       expect(result.all.length).toBe(2)
     })
 
-    test('handles changing inputs', () => {
+    test('custom comparse with changing inputs', () => {
       const initialProps = {
         value: 'foo',
         inputFn: ({ value }: { value: string }): any => ({
@@ -273,7 +251,7 @@ describe('extras', () => {
         ({ value, inputFn }) => {
           const cachedFunction = useIsNew(
             inputFn,
-            (prev, next) => prev !== next
+            (prev, next) => prev === next
           )
           return cachedFunction({ value })
         },
