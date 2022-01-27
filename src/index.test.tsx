@@ -84,13 +84,15 @@ describe('core', () => {
         key: 'test2',
         defaultState: 'foo2'
       })
-      const selector1 = jest.fn()
-      const selector2 = jest.fn()
+      const selector1 = jest.fn((d) => d)
+      const selector2 = jest.fn((d) => d)
+      const renderCallback = jest.fn()
       const { result } = renderHook(
         () => {
           const val1 = useRead(atom1, selector1)
           const val2 = useRead(atom2, selector2)
           const send1 = useSend(atom1)
+          renderCallback()
 
           return { val1, val2, send1 }
         },
@@ -103,8 +105,10 @@ describe('core', () => {
         })
         result.current.send1(setText, 'bar')
       })
+
       expect(selector1.mock.calls.length).toBe(2)
       expect(selector2.mock.calls.length).toBe(1)
+      expect(renderCallback.mock.calls.length).toBe(2)
     })
 
     describe('custom isEqual function', () => {
@@ -135,6 +139,7 @@ describe('core', () => {
         result.current.send1(setText, 'bar')
       })
 
+      expect(selector1.mock.calls.length).toBe(3)
       expect(renderCallback.mock.calls.length).toBe(1)
     })
   })
