@@ -5,7 +5,7 @@
  * Either we throw an error or just let it work.
  */
 
-import React from 'react'
+import React, { useRef } from 'react'
 import {
   renderHook,
   act
@@ -98,19 +98,22 @@ describe('core', () => {
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
-    const mockSelector = jest.fn((d) => d)
+    const mockSelector = jest.fn((d) => d.text)
     const { result } = renderHook(
       () => {
         const readValue = useRead(ref, mockSelector)
         const sendAtom = useSend(ref)
         const readValue2 = useRead(ref2, identity)
         const sendAtom2 = useSend(ref2)
+        const renderCount = useRef(0)
+        renderCount.current += 1
 
         return {
           readValue,
           sendAtom,
           readValue2,
-          sendAtom2
+          sendAtom2,
+          renderCount: renderCount.current
         }
       },
       { wrapper }
@@ -120,12 +123,15 @@ describe('core', () => {
       result.current.sendAtom(setTestState, 'baz')
     })
     act(() => {
+      result.current.sendAtom(setTestState, 'baz')
+    })
+    expect(result.current.renderCount).toBe(2)
+    act(() => {
       result.current.sendAtom2(setTestState2, 'bar2')
     })
-
-    expect(result.current.readValue).toEqual({
-      text: 'baz'
-    })
+    expect(mockSelector.mock.calls.length).toBe(3)
+    expect(result.current.renderCount).toBe(3)
+    expect(result.current.readValue).toEqual('baz')
     expect(result.current.readValue2).toBe('bar2')
   })
 
