@@ -1,3 +1,4 @@
+import shallowEqual from 'shallowequal'
 import {
   useEffect,
   useMemo,
@@ -43,12 +44,15 @@ export function atom<T>({
   }
 }
 
+type IsEqualFn<T> = (prev: T, next: T) => boolean
+
 const updateReadReducer = (toggleNum: number) =>
   toggleNum ? 0 : 1
 
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
-  selector: SelectorFn<T, SelectorValue>
+  selector: SelectorFn<T, SelectorValue>,
+  isEqual: IsEqualFn<SelectorValue> = shallowEqual
 ): SelectorValue {
   const { key, defaultState } = atom
   const db = useDb()
@@ -59,7 +63,12 @@ export function useRead<T, SelectorValue = T>(
   const selectorRef = useRef(
     undefined as unknown as SelectorFn<T, SelectorValue>
   )
+  const isEqualRef = useRef(
+    undefined as unknown as IsEqualFn<SelectorValue>
+  )
   const isNewSelector = selectorRef.current !== selector
+
+  isEqualRef.current = isEqual
 
   if (isNewSelector) {
     const stateSlice = getState(db)[key]
@@ -78,21 +87,21 @@ export function useRead<T, SelectorValue = T>(
     hookLifecycle(db, atom, lifecycleMount)
 
     const watcherFn: WatcherFn = ({
-      oldState,
       newState,
       atom: initiatedBy
     }) => {
-      const shouldUpdate = initiatedBy.key === key
+      const maybeUpdate = initiatedBy.key === key
 
-      if (!shouldUpdate) {
+      if (!maybeUpdate) {
         return
       }
 
-      const prev = oldState[key]
+      const prev = selectorValue.current
       const next = selectorRef.current(
         defaultTo(defaultState, newState[key])
       )
-      const hasChanged = prev !== next
+      const hasChanged =
+        next !== prev && !isEqualRef.current(prev, next)
 
       if (!hasChanged) {
         return

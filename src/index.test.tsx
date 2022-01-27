@@ -1,11 +1,4 @@
-/*
- * TODO: add test for `useRead` api and different selectors
- * on each render cycle. In general we shouldn't support this
- * behavior, but we still need to handle this edge case.
- * Either we throw an error or just let it work.
- */
-
-import React from 'react'
+import React, { useRef } from 'react'
 import {
   renderHook,
   act
@@ -15,8 +8,7 @@ import {
   useRead,
   useReset,
   useSend,
-  RetomicRoot,
-  useIsNew
+  RetomicRoot
 } from '.'
 import { useOnLifecycle } from './lifecycle'
 import type { SelectorFn } from './'
@@ -92,25 +84,53 @@ describe('core', () => {
       expect(selector1.mock.calls.length).toBe(2)
       expect(selector2.mock.calls.length).toBe(1)
     })
+
+    test('custom isEqual function', () => {
+      const selector1 = jest.fn((d) => d)
+      const renderCallback = jest.fn()
+      const { result } = renderHook(
+        () => {
+          const val1 = useRead(ref, selector1, () => true)
+          const send1 = useSend(ref)
+          renderCallback()
+
+          return { val1, send1 }
+        },
+        { wrapper }
+      )
+
+      act(() => {
+        const setText = (_: State, text: string) => ({
+          text
+        })
+        result.current.send1(setText, 'bar')
+        result.current.send1(setText, 'bar')
+      })
+
+      expect(renderCallback.mock.calls.length).toBe(1)
+    })
   })
 
   test('useSend', () => {
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
-    const mockSelector = jest.fn((d) => d)
+    const mockSelector = jest.fn((d) => d.text)
     const { result } = renderHook(
       () => {
         const readValue = useRead(ref, mockSelector)
         const sendAtom = useSend(ref)
         const readValue2 = useRead(ref2, identity)
         const sendAtom2 = useSend(ref2)
+        const renderCount = useRef(0)
+        renderCount.current += 1
 
         return {
           readValue,
           sendAtom,
           readValue2,
-          sendAtom2
+          sendAtom2,
+          renderCount: renderCount.current
         }
       },
       { wrapper }
@@ -120,12 +140,15 @@ describe('core', () => {
       result.current.sendAtom(setTestState, 'baz')
     })
     act(() => {
+      result.current.sendAtom(setTestState, 'baz')
+    })
+    expect(result.current.renderCount).toBe(2)
+    act(() => {
       result.current.sendAtom2(setTestState2, 'bar2')
     })
-
-    expect(result.current.readValue).toEqual({
-      text: 'baz'
-    })
+    expect(mockSelector.mock.calls.length).toBe(3)
+    expect(result.current.renderCount).toBe(3)
+    expect(result.current.readValue).toEqual('baz')
     expect(result.current.readValue2).toBe('bar2')
   })
 
@@ -182,117 +205,6 @@ describe('core', () => {
       })
 
       expect(() => result.current).toThrow()
-    })
-  })
-})
-
-describe('extras', () => {
-  describe('use cache', () => {
-    const wrapper = ({ children }: { children?: any }) => (
-      <RetomicRoot>{children}</RetomicRoot>
-    )
-
-    test('primitive compare', () => {
-      const { result, rerender } = renderHook(
-        (props) => {
-          const cachedFunction = useIsNew(
-            (value: string) => value
-          )
-          return cachedFunction(props.value)
-        },
-        {
-          wrapper,
-          initialProps: { value: 'foo' }
-        }
-      )
-
-      rerender({ value: 'foo' })
-      expect(result.all[0]).toBe(result.all[1])
-      rerender({ value: 'bar' })
-      expect(result.all[1]).not.toBe(result.all[2])
-      expect(result.all.length).toBe(3)
-    })
-
-    test('shallow compare', () => {
-      const { result, rerender } = renderHook(
-        (props) => {
-          const cachedFunction = useIsNew(
-            ({ value }: { value: string }) => ({ value })
-          )
-          return cachedFunction({ value: props.value })
-        },
-        {
-          wrapper,
-          initialProps: { value: 'foo' }
-        }
-      )
-
-      rerender({ value: 'foo' })
-      expect(result.all[0]).toBe(result.all[1])
-      rerender({ value: 'bar' })
-      expect(result.all[1]).not.toBe(result.all[2])
-      expect(result.all.length).toBe(3)
-    })
-
-    test('custom compare', () => {
-      const { result, rerender } = renderHook(
-        (props) => {
-          const cachedFunction = useIsNew(
-            ({ value }: { value: string }) => ({
-              value
-            }),
-            (prev, next) => prev !== next
-          )
-          return cachedFunction({ value: props.value })
-        },
-        {
-          wrapper,
-          initialProps: { value: 'foo' }
-        }
-      )
-
-      rerender({ value: 'foo' })
-      expect(result.all[0]).not.toBe(result.all[1])
-      expect(result.all.length).toBe(2)
-    })
-
-    test('handles changing inputs', () => {
-      const initialProps = {
-        value: 'foo',
-        inputFn: ({ value }: { value: string }): any => ({
-          value
-        })
-      }
-      const { result, rerender } = renderHook(
-        ({ value, inputFn }) => {
-          const cachedFunction = useIsNew(
-            inputFn,
-            (prev, next) => prev !== next
-          )
-          return cachedFunction({ value })
-        },
-        {
-          wrapper,
-          initialProps
-        }
-      )
-
-      expect(result.current).toEqual({ value: 'foo' })
-      rerender({
-        value: 'foo',
-        inputFn: ({ value }) => value.length
-      })
-      expect(result.current).toBe(3)
-    })
-
-    test('forwards function name', () => {
-      function namedFn() {}
-      const { result } = renderHook(
-        () => useIsNew(namedFn),
-        { wrapper }
-      )
-
-      expect(result.current.name).toBe('namedFn')
     })
   })
 })
