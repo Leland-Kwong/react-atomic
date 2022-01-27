@@ -59,12 +59,12 @@ function useRead(atom, selector) {
     (0, react_1.useEffect)(function () {
         (0, lifecycle_1.hookLifecycle)(db, atom, constants_1.lifecycleMount);
         var watcherFn = function (_a) {
-            var oldState = _a.oldState, newState = _a.newState, initiatedBy = _a.atom;
-            var shouldUpdate = initiatedBy.key === key;
-            if (!shouldUpdate) {
+            var newState = _a.newState, initiatedBy = _a.atom;
+            var maybeUpdate = initiatedBy.key === key;
+            if (!maybeUpdate) {
                 return;
             }
-            var prev = oldState[key];
+            var prev = selectorValue.current;
             var next = selectorRef.current(defaultTo(defaultState, newState[key]));
             var hasChanged = prev !== next;
             if (!hasChanged) {
