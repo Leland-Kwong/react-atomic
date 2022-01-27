@@ -63,7 +63,6 @@ function Counter() {
   return (
     <div>
       <button
-        className={styles.button}
         aria-label="Increment value"
         onClick={() => send(increment, 1)}
       >
@@ -71,7 +70,6 @@ function Counter() {
       </button>
       <span className={styles.value}>{count}</span>
       <button
-        className={styles.button}
         aria-label="Decrement value"
         onClick={() => send(decrement, 1)}
       >
