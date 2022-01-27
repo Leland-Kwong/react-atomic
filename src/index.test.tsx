@@ -23,16 +23,6 @@ const setTestState = (s: State, text: string) => ({
 })
 const setTestState2 = (_: State2, newText: string) =>
   newText
-const ref = atom<State>({
-  key: 'test',
-  defaultState: {
-    text: 'foo'
-  }
-})
-const ref2 = atom<State2>({
-  key: 'test2',
-  defaultState: 'foo2'
-})
 
 describe('core', () => {
   describe('useRead', () => {
@@ -44,6 +34,12 @@ describe('core', () => {
     }) => <RetomicRoot>{children}</RetomicRoot>
 
     test('different selector each render', () => {
+      const ref = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const sliceText = (dist: number) => (d: State) =>
         d.text.substring(0, dist)
       const { result, rerender } = renderHook(
@@ -62,6 +58,12 @@ describe('core', () => {
     })
 
     test('different selector with same object equality should return same reference', () => {
+      const ref = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const { result, rerender } = renderHook(
         () => useRead(ref, ({ text }) => ({ text })),
         { wrapper }
@@ -72,6 +74,16 @@ describe('core', () => {
     })
 
     test('only updates when change matches atom key', () => {
+      const ref = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
+      const ref2 = atom<State2>({
+        key: 'test2',
+        defaultState: 'foo2'
+      })
       const selector1 = jest.fn()
       const selector2 = jest.fn()
       const { result } = renderHook(
@@ -96,6 +108,12 @@ describe('core', () => {
     })
 
     describe('custom isEqual function', () => {
+      const ref = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const selector1 = jest.fn((d) => d)
       const renderCallback = jest.fn()
       const { result } = renderHook(
@@ -122,6 +140,16 @@ describe('core', () => {
   })
 
   test('useSend', () => {
+    const ref = atom<State>({
+      key: 'test',
+      defaultState: {
+        text: 'foo'
+      }
+    })
+    const ref2 = atom<State2>({
+      key: 'test2',
+      defaultState: 'foo2'
+    })
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
@@ -163,6 +191,12 @@ describe('core', () => {
   })
 
   test('useReset', () => {
+    const ref = atom<State>({
+      key: 'test',
+      defaultState: {
+        text: 'foo'
+      }
+    })
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
@@ -194,6 +228,12 @@ describe('core', () => {
 
   describe('check for missing RetomicRoot wrapper', () => {
     test('useRead', () => {
+      const ref = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const wrapper = ({ children }: { children: any }) => (
         <div>{children}</div>
       )
@@ -207,6 +247,12 @@ describe('core', () => {
     })
 
     test('useSend', () => {
+      const ref = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const wrapper = ({ children }: { children: any }) => (
         <div>{children}</div>
       )
@@ -238,7 +284,12 @@ describe('lifecycle', () => {
     </RetomicRoot>
   )
   const identity = (d: any) => d
+
   test('properly manages listeners and state on mount/unmount', () => {
+    const ref2 = atom<State2>({
+      key: 'test2',
+      defaultState: 'foo2'
+    })
     const atomToTest = ref2
     const onLifecycle = jest.fn()
     function Lifecycle() {
