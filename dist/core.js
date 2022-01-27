@@ -44,19 +44,24 @@ exports.atom = atom;
 var updateReadReducer = function (toggleNum) {
     return toggleNum ? 0 : 1;
 };
-function useRead(atom, selector, isEqual) {
-    if (isEqual === void 0) { isEqual = shallowequal_1.default; }
+var hasChanged = function (prev, next, isEqualFn) { return prev !== next && !isEqualFn(prev, next); };
+function useRead(atom, selector, isEqualFn) {
+    if (isEqualFn === void 0) { isEqualFn = shallowequal_1.default; }
     var key = atom.key, defaultState = atom.defaultState;
     var db = (0, utils_1.useDb)();
     var _a = (0, react_1.useReducer)(updateReadReducer, 0), update = _a[1];
     var selectorValue = (0, react_1.useRef)(undefined);
     var selectorRef = (0, react_1.useRef)(undefined);
-    var isEqualRef = (0, react_1.useRef)(undefined);
+    var isEqualFnRef = (0, react_1.useRef)(undefined);
     var isNewSelector = selectorRef.current !== selector;
-    isEqualRef.current = isEqual;
+    isEqualFnRef.current = isEqualFn;
     if (isNewSelector) {
         var stateSlice = (0, db_1.getState)(db)[key];
-        selectorValue.current = selector(defaultTo(defaultState, stateSlice));
+        var prev = selectorValue.current;
+        var next = selector(defaultTo(defaultState, stateSlice));
+        if (hasChanged(prev, next, isEqualFn)) {
+            selectorValue.current = next;
+        }
         /**
          * IMPORTANT
          * Update the selector in case it changes between renders.
@@ -73,8 +78,7 @@ function useRead(atom, selector, isEqual) {
             }
             var prev = selectorValue.current;
             var next = selectorRef.current(defaultTo(defaultState, newState[key]));
-            var hasChanged = next !== prev && !isEqualRef.current(prev, next);
-            if (!hasChanged) {
+            if (!hasChanged(prev, next, isEqualFnRef.current)) {
                 return;
             }
             selectorValue.current = next;
