@@ -6,7 +6,8 @@ Retomic is a reactive state management system for React. The idea is to atomical
 
 The Retomic package lives in [npm](https://www.npmjs.com/get-npm). To install the latest stable version, run the following command:
 
-```shell npm install retomic
+```shell
+npm install retomic
 ```
 
 ## Usage
