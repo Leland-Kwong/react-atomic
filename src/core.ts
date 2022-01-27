@@ -18,7 +18,7 @@ import type {
   UpdateFn,
   WatcherFn
 } from './types'
-import { useDb } from './utils'
+import { logMsg, useDb } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -49,10 +49,16 @@ type IsEqualFn<T> = (prev: T, next: T) => boolean
 const updateReadReducer = (toggleNum: number) =>
   toggleNum ? 0 : 1
 
+const hasChanged = <T>(
+  prev: T,
+  next: T,
+  isEqualFn: IsEqualFn<T>
+) => prev !== next && !isEqualFn(prev, next)
+
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
   selector: SelectorFn<T, SelectorValue>,
-  isEqual: IsEqualFn<SelectorValue> = shallowEqual
+  isEqualFn: IsEqualFn<SelectorValue> = shallowEqual
 ): SelectorValue {
   const { key, defaultState } = atom
   const db = useDb()
@@ -63,19 +69,23 @@ export function useRead<T, SelectorValue = T>(
   const selectorRef = useRef(
     undefined as unknown as SelectorFn<T, SelectorValue>
   )
-  const isEqualRef = useRef(
+  const isEqualFnRef = useRef(
     undefined as unknown as IsEqualFn<SelectorValue>
   )
   const isNewSelector = selectorRef.current !== selector
 
-  isEqualRef.current = isEqual
+  isEqualFnRef.current = isEqualFn
 
   if (isNewSelector) {
     const stateSlice = getState(db)[key]
-
-    selectorValue.current = selector(
+    const prev = selectorValue.current
+    const next = selector(
       defaultTo(defaultState, stateSlice)
     )
+
+    if (hasChanged(prev, next, isEqualFn)) {
+      selectorValue.current = next
+    }
     /**
      * IMPORTANT
      * Update the selector in case it changes between renders.
@@ -100,10 +110,8 @@ export function useRead<T, SelectorValue = T>(
       const next = selectorRef.current(
         defaultTo(defaultState, newState[key])
       )
-      const hasChanged =
-        next !== prev && !isEqualRef.current(prev, next)
 
-      if (!hasChanged) {
+      if (!hasChanged(prev, next, isEqualFnRef.current)) {
         return
       }
 
@@ -142,7 +150,10 @@ export function useSend<T>(atom: Atom<T>) {
           !updateFn.name
         ) {
           console.error(
-            'Warning: This update function should be named -',
+            logMsg(
+              'This update function should be named -',
+              'warning'
+            ),
             updateFn
           )
         }

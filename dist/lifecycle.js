@@ -49,7 +49,7 @@ function isAtomActive(db, atom) {
 function hookLifecycle(db, atom, lifecycleType) {
     var hasRetomicRoot = db !== root_context_1.defaultContext;
     if (!hasRetomicRoot) {
-        throw new Error((0, utils_1.errorMsg)('Application tree must be wrapped in an `RetomicRoot` component'));
+        throw new Error((0, utils_1.logMsg)('Application tree must be wrapped in an `RetomicRoot` component'));
     }
     if (lifecycleType === constants_1.lifecycleMount) {
         db.activeHooks[atom.key] =

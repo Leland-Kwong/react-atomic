@@ -16,26 +16,6 @@ export function makeDb<T>(initialState: T): Db {
   }
 }
 
-export function emitLifecycleEvent<T>(
-  db: Db,
-  atom: Atom<T>,
-  type:
-    | typeof lifecycleMount
-    | typeof lifecycleUnmount
-    | typeof lifecycleStateChange
-) {
-  if (subscriberCount(db.lifecycleChannel) === 0) {
-    return
-  }
-
-  emit(db.lifecycleChannel, {
-    type,
-    key: atom.key,
-    state: getState(db),
-    activeHooks: { ...db.activeHooks }
-  })
-}
-
 export async function setState<T>(
   db: Db,
   newState: T,
@@ -60,4 +40,24 @@ export async function setState<T>(
 
 export function getState(db: Db) {
   return db.state
+}
+
+export function emitLifecycleEvent<T>(
+  db: Db,
+  atom: Atom<T>,
+  type:
+    | typeof lifecycleMount
+    | typeof lifecycleUnmount
+    | typeof lifecycleStateChange
+) {
+  if (subscriberCount(db.lifecycleChannel) === 0) {
+    return
+  }
+
+  emit(db.lifecycleChannel, {
+    type,
+    key: atom.key,
+    state: getState(db),
+    activeHooks: { ...db.activeHooks }
+  })
 }

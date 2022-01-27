@@ -29,7 +29,7 @@ function RetomicRoot(_a) {
     var currentDb = (0, utils_1.useDb)();
     var isNestedRetomicRoot = currentDb !== root_context_1.defaultContext;
     if (isNestedRetomicRoot) {
-        throw new Error((0, utils_1.errorMsg)('Application tree may only be wrapped in a single `RetomicRoot` component'));
+        throw new Error((0, utils_1.logMsg)('Application tree may only be wrapped in a single `RetomicRoot` component'));
     }
     var db = (0, react_1.useMemo)(function () { return (0, db_1.makeDb)({}); }, []);
     return (react_1.default.createElement(root_context_1.RootContext.Provider, { value: db }, children));

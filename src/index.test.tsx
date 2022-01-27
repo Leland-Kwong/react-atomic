@@ -23,16 +23,6 @@ const setTestState = (s: State, text: string) => ({
 })
 const setTestState2 = (_: State2, newText: string) =>
   newText
-const ref = atom<State>({
-  key: 'test',
-  defaultState: {
-    text: 'foo'
-  }
-})
-const ref2 = atom<State2>({
-  key: 'test2',
-  defaultState: 'foo2'
-})
 
 describe('core', () => {
   describe('useRead', () => {
@@ -44,10 +34,16 @@ describe('core', () => {
     }) => <RetomicRoot>{children}</RetomicRoot>
 
     test('different selector each render', () => {
+      const atom1 = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const sliceText = (dist: number) => (d: State) =>
         d.text.substring(0, dist)
       const { result, rerender } = renderHook(
-        ({ selector }) => useRead(ref, selector),
+        ({ selector }) => useRead(atom1, selector),
         {
           wrapper,
           initialProps: {
@@ -61,14 +57,40 @@ describe('core', () => {
       expect(result.current).toBe('foo')
     })
 
+    test('different selector with same object equality should return same reference', () => {
+      const atom1 = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
+      const { result, rerender } = renderHook(
+        () => useRead(atom1, ({ text }) => ({ text })),
+        { wrapper }
+      )
+
+      rerender()
+      expect(result.all[0]).toBe(result.current)
+    })
+
     test('only updates when change matches atom key', () => {
+      const atom1 = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
+      const atom2 = atom<State2>({
+        key: 'test2',
+        defaultState: 'foo2'
+      })
       const selector1 = jest.fn()
       const selector2 = jest.fn()
       const { result } = renderHook(
         () => {
-          const val1 = useRead(ref, selector1)
-          const val2 = useRead(ref2, selector2)
-          const send1 = useSend(ref)
+          const val1 = useRead(atom1, selector1)
+          const val2 = useRead(atom2, selector2)
+          const send1 = useSend(atom1)
 
           return { val1, val2, send1 }
         },
@@ -85,13 +107,19 @@ describe('core', () => {
       expect(selector2.mock.calls.length).toBe(1)
     })
 
-    test('custom isEqual function', () => {
+    describe('custom isEqual function', () => {
+      const atom1 = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const selector1 = jest.fn((d) => d)
       const renderCallback = jest.fn()
       const { result } = renderHook(
         () => {
-          const val1 = useRead(ref, selector1, () => true)
-          const send1 = useSend(ref)
+          const val1 = useRead(atom1, selector1, () => true)
+          const send1 = useSend(atom1)
           renderCallback()
 
           return { val1, send1 }
@@ -112,16 +140,26 @@ describe('core', () => {
   })
 
   test('useSend', () => {
+    const atom1 = atom<State>({
+      key: 'test',
+      defaultState: {
+        text: 'foo'
+      }
+    })
+    const atom2 = atom<State2>({
+      key: 'test2',
+      defaultState: 'foo2'
+    })
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
     const mockSelector = jest.fn((d) => d.text)
     const { result } = renderHook(
       () => {
-        const readValue = useRead(ref, mockSelector)
-        const sendAtom = useSend(ref)
-        const readValue2 = useRead(ref2, identity)
-        const sendAtom2 = useSend(ref2)
+        const readValue = useRead(atom1, mockSelector)
+        const sendAtom = useSend(atom1)
+        const readValue2 = useRead(atom2, identity)
+        const sendAtom2 = useSend(atom2)
         const renderCount = useRef(0)
         renderCount.current += 1
 
@@ -153,15 +191,21 @@ describe('core', () => {
   })
 
   test('useReset', () => {
+    const atom1 = atom<State>({
+      key: 'test',
+      defaultState: {
+        text: 'foo'
+      }
+    })
     const wrapper = ({ children }: { children: any }) => (
       <RetomicRoot>{children}</RetomicRoot>
     )
     const mockSelector = jest.fn((d) => d)
     const { result } = renderHook(
       () => {
-        const readValue = useRead(ref, mockSelector)
-        const resetAtom = useReset(ref)
-        const sendAtom = useSend(ref)
+        const readValue = useRead(atom1, mockSelector)
+        const resetAtom = useReset(atom1)
+        const sendAtom = useSend(atom1)
 
         return {
           readValue,
@@ -179,17 +223,25 @@ describe('core', () => {
       result.current.resetAtom()
     })
 
-    expect(result.current.readValue).toBe(ref.defaultState)
+    expect(result.current.readValue).toBe(
+      atom1.defaultState
+    )
   })
 
   describe('check for missing RetomicRoot wrapper', () => {
     test('useRead', () => {
+      const atom1 = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const wrapper = ({ children }: { children: any }) => (
         <div>{children}</div>
       )
       const selector = (d: State) => d.text.length
       const { result } = renderHook(
-        () => useRead(ref, selector),
+        () => useRead(atom1, selector),
         { wrapper }
       )
 
@@ -197,10 +249,16 @@ describe('core', () => {
     })
 
     test('useSend', () => {
+      const atom1 = atom<State>({
+        key: 'test',
+        defaultState: {
+          text: 'foo'
+        }
+      })
       const wrapper = ({ children }: { children: any }) => (
         <div>{children}</div>
       )
-      const { result } = renderHook(() => useSend(ref), {
+      const { result } = renderHook(() => useSend(atom1), {
         wrapper
       })
 
@@ -228,8 +286,13 @@ describe('lifecycle', () => {
     </RetomicRoot>
   )
   const identity = (d: any) => d
+
   test('properly manages listeners and state on mount/unmount', () => {
-    const atomToTest = ref2
+    const atom1 = atom<State2>({
+      key: 'test2',
+      defaultState: 'foo2'
+    })
+    const atomToTest = atom1
     const onLifecycle = jest.fn()
     function Lifecycle() {
       useOnLifecycle(onLifecycle)
@@ -238,8 +301,8 @@ describe('lifecycle', () => {
     const { result, rerender } = renderHook(
       () => {
         return {
-          readValue: useRead(ref2, identity),
-          sendAtom: useSend(ref2)
+          readValue: useRead(atom1, identity),
+          sendAtom: useSend(atom1)
         }
       },
       {
@@ -320,8 +383,8 @@ describe('lifecycle', () => {
   })
 
   test('resetOnInactive option disabled', () => {
-    const atomToTest = atom({
-      key: 'atomToTest',
+    const atom1 = atom({
+      key: 'atom1',
       defaultState: '',
       resetOnInactive: false
     })
@@ -333,7 +396,7 @@ describe('lifecycle', () => {
     const { result, rerender } = renderHook(
       () => {
         return {
-          sendAtom: useSend(atomToTest)
+          sendAtom: useSend(atom1)
         }
       },
       {
@@ -358,9 +421,9 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [atomToTest.key]: 1
+            [atom1.key]: 1
           },
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'mount',
           state: {}
         }
@@ -368,22 +431,22 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [atomToTest.key]: 1
+            [atom1.key]: 1
           },
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'stateChange',
           state: {
-            [atomToTest.key]: 'foo'
+            [atom1.key]: 'foo'
           }
         }
       ],
       [
         {
           activeHooks: {},
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'unmount',
           state: {
-            [atomToTest.key]: 'foo'
+            [atom1.key]: 'foo'
           }
         }
       ]
