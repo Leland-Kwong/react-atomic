@@ -1,10 +1,3 @@
-/*
- * TODO: add test for `useRead` api and different selectors
- * on each render cycle. In general we shouldn't support this
- * behavior, but we still need to handle this edge case.
- * Either we throw an error or just let it work.
- */
-
 import React, { useRef } from 'react'
 import {
   renderHook,
