@@ -1,12 +1,22 @@
-# packs and installs locally to the provided directory
+#!/usr/bin/env bash
+# packs and installs npm package folder locally to the provided destination
 
 cleanfiles() {
   ls | sed -n '/^retomic./p' | xargs rm
 }
 
-# cleanup tar files before and after installing
-cleanfiles\
-  && npm pack --pack-destination $1\
-  && cd $1\
-  && npm install retomic*.tgz\
-  && cleanfiles
+cleanupdist() {
+  git checkout dist
+}
+
+destination="$1"
+
+npm run build
+npm pack --pack-destination $destination
+# keep dist folder clean so we don't acidentally commit it
+cleanupdist
+# install into destination
+cd $destination
+npm install retomic*.tgz
+# cleanup tar files after installing
+cleanfiles
