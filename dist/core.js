@@ -41,32 +41,27 @@ function createAtom(_a) {
     };
 }
 exports.createAtom = createAtom;
-var updateReadReducer = function (toggleNum) {
-    return toggleNum ? 0 : 1;
+var defaultIsEqualFn = function (prev, next) {
+    return prev === next || (0, shallowequal_1.default)(prev, next);
 };
-var hasChanged = function (prev, next, isEqualFn) { return prev !== next && !isEqualFn(prev, next); };
 function useRead(atom, selector, isEqualFn) {
-    if (isEqualFn === void 0) { isEqualFn = shallowequal_1.default; }
+    if (isEqualFn === void 0) { isEqualFn = defaultIsEqualFn; }
     var key = atom.key, defaultState = atom.defaultState;
     var db = (0, utils_1.useDb)();
-    var _a = (0, react_1.useReducer)(updateReadReducer, 0), update = _a[1];
+    var update = (0, utils_1.useUpdate)();
+    var args = { atom: atom, selector: selector, isEqualFn: isEqualFn };
+    var argsRef = (0, react_1.useRef)({});
     var selectorValue = (0, react_1.useRef)(undefined);
-    var selectorRef = (0, react_1.useRef)(undefined);
-    var isEqualFnRef = (0, react_1.useRef)(undefined);
-    var isNewSelector = selectorRef.current !== selector;
-    isEqualFnRef.current = isEqualFn;
-    if (isNewSelector) {
+    var shouldRecalculate = argsRef.current.selector !== selector ||
+        argsRef.current.isEqualFn !== isEqualFn;
+    argsRef.current = args;
+    if (shouldRecalculate) {
         var stateSlice = (0, db_1.getState)(db)[key];
         var prev = selectorValue.current;
         var next = selector(defaultTo(defaultState, stateSlice));
-        if (hasChanged(prev, next, isEqualFn)) {
+        if (!isEqualFn(prev, next)) {
             selectorValue.current = next;
         }
-        /**
-         * IMPORTANT
-         * Update the selector in case it changes between renders.
-         */
-        selectorRef.current = selector;
     }
     (0, react_1.useEffect)(function () {
         (0, lifecycle_1.hookLifecycle)(db, atom, constants_1.lifecycleMount);
@@ -76,9 +71,10 @@ function useRead(atom, selector, isEqualFn) {
             if (!maybeUpdate) {
                 return;
             }
+            var curArgs = argsRef.current;
             var prev = selectorValue.current;
-            var next = selectorRef.current(defaultTo(defaultState, newState[key]));
-            if (!hasChanged(prev, next, isEqualFnRef.current)) {
+            var next = curArgs.selector(defaultTo(defaultState, newState[key]));
+            if (curArgs.isEqualFn(prev, next)) {
                 return;
             }
             selectorValue.current = next;
@@ -89,7 +85,7 @@ function useRead(atom, selector, isEqualFn) {
             (0, channels_1.unsubscribe)(db.stateChangeChannel, id);
             (0, lifecycle_1.hookLifecycle)(db, atom, constants_1.lifecycleUnmount);
         };
-    }, [db, key, defaultState, atom]);
+    }, [db, key, defaultState, atom, update]);
     return selectorValue.current;
 }
 exports.useRead = useRead;
