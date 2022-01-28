@@ -8,6 +8,8 @@ import {
   useRead,
   useReset,
   useSend,
+  useReadRoot,
+  useWriteRoot,
   RetomicRoot
 } from '.'
 import { useOnLifecycle } from './lifecycle'
@@ -497,6 +499,44 @@ describe('lifecycle', () => {
           }
         }
       ]
+    ])
+  })
+
+  test('writing to root state should also update selectors', () => {
+    const testAtom = atom({
+      key: 'test',
+      defaultState: {
+        text: 'bar'
+      }
+    })
+    const wrapper = ({ children }: { children: any }) => (
+      <RetomicRoot>{children}</RetomicRoot>
+    )
+    const newRootState = {
+      [testAtom.key]: {
+        text: 'baz'
+      }
+    }
+    const selector = jest.fn((d) => d)
+    const { result } = renderHook(
+      () => {
+        return {
+          selection: useRead(testAtom, selector),
+          writeRoot: useWriteRoot(),
+          rootState: useReadRoot()
+        }
+      },
+      { wrapper }
+    )
+
+    act(() => {
+      result.current.writeRoot(newRootState)
+    })
+
+    expect(result.current.rootState).toBe(newRootState)
+    expect(selector.mock.calls).toEqual([
+      [testAtom.defaultState],
+      [newRootState[testAtom.key]]
     ])
   })
 })

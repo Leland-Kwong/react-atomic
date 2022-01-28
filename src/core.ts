@@ -4,6 +4,7 @@ import { subscribe, unsubscribe } from './channels'
 import { getState, setState } from './db'
 import { hookLifecycle } from './lifecycle'
 import {
+  noop,
   lifecycleMount,
   lifecycleUnmount
 } from './constants'
@@ -169,4 +170,21 @@ export function useReset<T>(atom: Atom<T>) {
     () => () => mutate($$resetAtom, atom.defaultState),
     [mutate, atom.defaultState]
   )
+}
+
+const rootAtom = createAtom({
+  key: 'retomic.root',
+  defaultState: undefined
+})
+
+export function useReadRoot() {
+  return getState(useDb())
+}
+
+export function useWriteRoot() {
+  const db = useDb()
+
+  return function writeRoot<NewState>(newState: NewState) {
+    return setState(db, newState, rootAtom, noop, undefined)
+  }
 }
