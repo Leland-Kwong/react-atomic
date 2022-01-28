@@ -14,7 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useReset = exports.useSend = exports.useRead = exports.atom = exports.useOnLifecycle = exports.RetomicRoot = void 0;
+exports.useReset = exports.useSend = exports.useRead = exports.createAtom = exports.useOnLifecycle = exports.RetomicRoot = void 0;
 var shallowequal_1 = __importDefault(require("shallowequal"));
 var react_1 = require("react");
 var channels_1 = require("./channels");
@@ -32,7 +32,7 @@ var RetomicRoot_1 = require("./RetomicRoot");
 Object.defineProperty(exports, "RetomicRoot", { enumerable: true, get: function () { return RetomicRoot_1.RetomicRoot; } });
 var lifecycle_2 = require("./lifecycle");
 Object.defineProperty(exports, "useOnLifecycle", { enumerable: true, get: function () { return lifecycle_2.useOnLifecycle; } });
-function atom(_a) {
+function createAtom(_a) {
     var key = _a.key, defaultState = _a.defaultState, _b = _a.resetOnInactive, resetOnInactive = _b === void 0 ? true : _b;
     return {
         key: key,
@@ -40,33 +40,28 @@ function atom(_a) {
         resetOnInactive: resetOnInactive
     };
 }
-exports.atom = atom;
-var updateReadReducer = function (toggleNum) {
-    return toggleNum ? 0 : 1;
+exports.createAtom = createAtom;
+var defaultIsEqualFn = function (prev, next) {
+    return prev === next || (0, shallowequal_1.default)(prev, next);
 };
-var hasChanged = function (prev, next, isEqualFn) { return prev !== next && !isEqualFn(prev, next); };
 function useRead(atom, selector, isEqualFn) {
-    if (isEqualFn === void 0) { isEqualFn = shallowequal_1.default; }
+    if (isEqualFn === void 0) { isEqualFn = defaultIsEqualFn; }
     var key = atom.key, defaultState = atom.defaultState;
     var db = (0, utils_1.useDb)();
-    var _a = (0, react_1.useReducer)(updateReadReducer, 0), update = _a[1];
+    var update = (0, utils_1.useUpdate)();
+    var args = { atom: atom, selector: selector, isEqualFn: isEqualFn };
+    var argsRef = (0, react_1.useRef)({});
     var selectorValue = (0, react_1.useRef)(undefined);
-    var selectorRef = (0, react_1.useRef)(undefined);
-    var isEqualFnRef = (0, react_1.useRef)(undefined);
-    var isNewSelector = selectorRef.current !== selector;
-    isEqualFnRef.current = isEqualFn;
-    if (isNewSelector) {
+    var shouldRecalculate = argsRef.current.selector !== selector ||
+        argsRef.current.isEqualFn !== isEqualFn;
+    argsRef.current = args;
+    if (shouldRecalculate) {
         var stateSlice = (0, db_1.getState)(db)[key];
         var prev = selectorValue.current;
         var next = selector(defaultTo(defaultState, stateSlice));
-        if (hasChanged(prev, next, isEqualFn)) {
+        if (!isEqualFn(prev, next)) {
             selectorValue.current = next;
         }
-        /**
-         * IMPORTANT
-         * Update the selector in case it changes between renders.
-         */
-        selectorRef.current = selector;
     }
     (0, react_1.useEffect)(function () {
         (0, lifecycle_1.hookLifecycle)(db, atom, constants_1.lifecycleMount);
@@ -76,9 +71,10 @@ function useRead(atom, selector, isEqualFn) {
             if (!maybeUpdate) {
                 return;
             }
+            var curArgs = argsRef.current;
             var prev = selectorValue.current;
-            var next = selectorRef.current(defaultTo(defaultState, newState[key]));
-            if (!hasChanged(prev, next, isEqualFnRef.current)) {
+            var next = curArgs.selector(defaultTo(defaultState, newState[key]));
+            if (curArgs.isEqualFn(prev, next)) {
                 return;
             }
             selectorValue.current = next;
@@ -89,7 +85,7 @@ function useRead(atom, selector, isEqualFn) {
             (0, channels_1.unsubscribe)(db.stateChangeChannel, id);
             (0, lifecycle_1.hookLifecycle)(db, atom, constants_1.lifecycleUnmount);
         };
-    }, [db, key, defaultState, atom]);
+    }, [db, key, defaultState, atom, update]);
     return selectorValue.current;
 }
 exports.useRead = useRead;

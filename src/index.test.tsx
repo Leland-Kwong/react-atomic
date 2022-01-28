@@ -23,6 +23,12 @@ const setTestState = (s: State, text: string) => ({
 })
 const setTestState2 = (_: State2, newText: string) =>
   newText
+const useRenderCount = () => {
+  const count = useRef(0)
+  count.current += 1
+
+  return count.current
+}
 
 describe('core', () => {
   describe('useRead', () => {
@@ -30,7 +36,8 @@ describe('core', () => {
       children
     }: {
       children?: any
-      selector: SelectorFn<State, any>
+      selector?: SelectorFn<State, any>
+      isEqualFn?: Function
     }) => <RetomicRoot>{children}</RetomicRoot>
 
     test('different selector each render', () => {
@@ -84,13 +91,15 @@ describe('core', () => {
         key: 'test2',
         defaultState: 'foo2'
       })
-      const selector1 = jest.fn()
-      const selector2 = jest.fn()
+      const selector1 = jest.fn((d) => d)
+      const selector2 = jest.fn((d) => d)
+      const renderCallback = jest.fn()
       const { result } = renderHook(
         () => {
           const val1 = useRead(atom1, selector1)
           const val2 = useRead(atom2, selector2)
           const send1 = useSend(atom1)
+          renderCallback()
 
           return { val1, val2, send1 }
         },
@@ -103,8 +112,10 @@ describe('core', () => {
         })
         result.current.send1(setText, 'bar')
       })
+
       expect(selector1.mock.calls.length).toBe(2)
       expect(selector2.mock.calls.length).toBe(1)
+      expect(renderCallback.mock.calls.length).toBe(2)
     })
 
     describe('custom isEqual function', () => {
@@ -114,28 +125,64 @@ describe('core', () => {
           text: 'foo'
         }
       })
-      const selector1 = jest.fn((d) => d)
-      const renderCallback = jest.fn()
-      const { result } = renderHook(
-        () => {
-          const val1 = useRead(atom1, selector1, () => true)
-          const send1 = useSend(atom1)
-          renderCallback()
+      const makeRenderHook = (initialProps: {
+        isEqualFn: any
+      }) =>
+        renderHook(
+          ({ isEqualFn }) => {
+            const val1 = useRead(atom1, (x) => x, isEqualFn)
+            const send1 = useSend(atom1)
+            const renderCount = useRenderCount()
 
-          return { val1, send1 }
-        },
-        { wrapper }
-      )
-
-      act(() => {
-        const setText = (_: State, text: string) => ({
-          text
-        })
-        result.current.send1(setText, 'bar')
-        result.current.send1(setText, 'bar')
+            return { val1, send1, renderCount }
+          },
+          {
+            wrapper,
+            initialProps
+          }
+        )
+      const setText = (_: State, text: string) => ({
+        text
       })
 
-      expect(renderCallback.mock.calls.length).toBe(1)
+      test('if is equal then should not rerender', () => {
+        const { result } = makeRenderHook({
+          isEqualFn: () => true
+        })
+        act(() => {
+          result.current.send1(setText, 'bar')
+        })
+        expect(result.current.renderCount).toBe(1)
+      })
+
+      test('if not equal then should rerender', () => {
+        const { result } = makeRenderHook({
+          isEqualFn: () => false
+        })
+        act(() => {
+          result.current.send1(setText, 'bar')
+        })
+        expect(result.current.renderCount).toBe(2)
+      })
+
+      test('when isEqualFn changes it should recalculate', () => {
+        const { result, rerender } = makeRenderHook({
+          isEqualFn: () => true
+        })
+        act(() => {
+          result.current.send1(setText, 'baz')
+        })
+        rerender({
+          isEqualFn: () => false
+        })
+        expect(result.current.renderCount).toBe(2)
+        // test the useRead's inner stateChange
+        // subscriber as well
+        act(() => {
+          result.current.send1(setText, 'cux')
+        })
+        expect(result.current.renderCount).toBe(3)
+      })
     })
   })
 
