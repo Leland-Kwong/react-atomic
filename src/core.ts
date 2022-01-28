@@ -1,10 +1,5 @@
 import shallowEqual from 'shallowequal'
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useReducer
-} from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { subscribe, unsubscribe } from './channels'
 import { getState, setState } from './db'
 import { hookLifecycle } from './lifecycle'
@@ -18,7 +13,7 @@ import type {
   UpdateFn,
   WatcherFn
 } from './types'
-import { logMsg, useDb } from './utils'
+import { logMsg, useDb, useUpdate } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -46,51 +41,38 @@ export function createAtom<T>({
 
 type IsEqualFn<T> = (prev: T, next: T) => boolean
 
-const updateReadReducer = (toggleNum: number) =>
-  toggleNum ? 0 : 1
-
-const hasChanged = <T>(
-  prev: T,
-  next: T,
-  isEqualFn: IsEqualFn<T>
-) => prev !== next && !isEqualFn(prev, next)
+const defaultIsEqualFn = <T>(prev: T, next: T) =>
+  prev === next || shallowEqual(prev, next)
 
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
   selector: SelectorFn<T, SelectorValue>,
-  isEqualFn: IsEqualFn<SelectorValue> = shallowEqual
+  isEqualFn: IsEqualFn<SelectorValue> = defaultIsEqualFn
 ): SelectorValue {
   const { key, defaultState } = atom
   const db = useDb()
-  const [, update] = useReducer(updateReadReducer, 0)
+  const update = useUpdate()
+  const args = { atom, selector, isEqualFn }
+  const argsRef = useRef({} as typeof args)
   const selectorValue = useRef(
     undefined as unknown as SelectorValue
   )
-  const selectorRef = useRef(
-    undefined as unknown as SelectorFn<T, SelectorValue>
-  )
-  const isEqualFnRef = useRef(
-    undefined as unknown as IsEqualFn<SelectorValue>
-  )
-  const isNewSelector = selectorRef.current !== selector
+  const shouldRecalculate =
+    argsRef.current.selector !== selector ||
+    argsRef.current.isEqualFn !== isEqualFn
 
-  isEqualFnRef.current = isEqualFn
+  argsRef.current = args
 
-  if (isNewSelector) {
+  if (shouldRecalculate) {
     const stateSlice = getState(db)[key]
     const prev = selectorValue.current
     const next = selector(
       defaultTo(defaultState, stateSlice)
     )
 
-    if (hasChanged(prev, next, isEqualFn)) {
+    if (!isEqualFn(prev, next)) {
       selectorValue.current = next
     }
-    /**
-     * IMPORTANT
-     * Update the selector in case it changes between renders.
-     */
-    selectorRef.current = selector
   }
 
   useEffect(() => {
@@ -106,12 +88,13 @@ export function useRead<T, SelectorValue = T>(
         return
       }
 
+      const curArgs = argsRef.current
       const prev = selectorValue.current
-      const next = selectorRef.current(
+      const next = curArgs.selector(
         defaultTo(defaultState, newState[key])
       )
 
-      if (!hasChanged(prev, next, isEqualFnRef.current)) {
+      if (curArgs.isEqualFn(prev, next)) {
         return
       }
 
@@ -125,7 +108,7 @@ export function useRead<T, SelectorValue = T>(
       unsubscribe(db.stateChangeChannel, id)
       hookLifecycle(db, atom, lifecycleUnmount)
     }
-  }, [db, key, defaultState, atom])
+  }, [db, key, defaultState, atom, update])
 
   return selectorValue.current
 }
