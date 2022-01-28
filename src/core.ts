@@ -10,6 +10,8 @@ import {
 } from './constants'
 import type {
   Atom,
+  Db,
+  DbState,
   SelectorFn,
   UpdateFn,
   WatcherFn
@@ -41,21 +43,61 @@ export function createAtom<T>({
 }
 
 type IsEqualFn<T> = (prev: T, next: T) => boolean
+type AtomColl<T> = Atom<T> | Atom<T>[]
 
 const defaultIsEqualFn = <T>(prev: T, next: T) =>
   prev === next || shallowEqual(prev, next)
 
+function toArray<T>(value: T) {
+  return Array.isArray(value) ? value : [value]
+}
+
+const processNext = <T, SelectorValue = T>(
+  db: Db,
+  atoms: AtomColl<T>,
+  selector: SelectorFn<T, SelectorValue>
+) => {
+  const getAtomState = (at: Atom<T>) => {
+    const stateSlice = getState(db)[at.key]
+    return defaultTo(at.defaultState, stateSlice)
+  }
+  const next = Array.isArray(atoms)
+    ? atoms.map(getAtomState)
+    : getAtomState(atoms)
+
+  return selector(next)
+}
+
+function isAtomStateEqual<T>(
+  this: { oldState: DbState; newState: DbState },
+  atom: Atom<T>
+) {
+  const { key } = atom
+  const { oldState, newState } = this
+
+  return oldState[key] === newState[key]
+}
+
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
   selector: SelectorFn<T, SelectorValue>,
+  isEqualFn?: IsEqualFn<SelectorValue>
+): SelectorValue
+export function useRead<T, SelectorValue = T>(
+  atom: Atom<T>[],
+  selector: SelectorFn<T[], SelectorValue>,
+  isEqualFn?: IsEqualFn<SelectorValue>
+): SelectorValue
+export function useRead<T, SelectorValue = T>(
+  atom: AtomColl<T>,
+  selector: SelectorFn<T, SelectorValue>,
   isEqualFn: IsEqualFn<SelectorValue> = defaultIsEqualFn
 ): SelectorValue {
-  const { key, defaultState } = atom
   const db = useDb()
   const update = useUpdate()
   const args = { atom, selector, isEqualFn }
   const argsRef = useRef({} as typeof args)
-  const selectorValue = useRef(
+  const stateRef = useRef(
     undefined as unknown as SelectorValue
   )
   const shouldRecalculate =
@@ -65,39 +107,49 @@ export function useRead<T, SelectorValue = T>(
   argsRef.current = args
 
   if (shouldRecalculate) {
-    const stateSlice = getState(db)[key]
-    const prev = selectorValue.current
-    const next = selector(
-      defaultTo(defaultState, stateSlice)
+    const prev = stateRef.current
+    const next = processNext(
+      db,
+      argsRef.current.atom,
+      selector
     )
 
     if (!isEqualFn(prev, next)) {
-      selectorValue.current = next
+      stateRef.current = next
     }
   }
 
   useEffect(() => {
-    hookLifecycle(db, atom, lifecycleMount)
+    toArray(argsRef.current.atom).forEach((atom) => {
+      hookLifecycle(db, atom, lifecycleMount)
+    })
 
     const watcherFn: WatcherFn = ({
       oldState,
       newState
     }) => {
-      if (oldState[key] === newState[key]) {
+      if (
+        toArray(argsRef.current.atom).every(
+          isAtomStateEqual,
+          { oldState, newState }
+        )
+      ) {
         return
       }
 
       const curArgs = argsRef.current
-      const prev = selectorValue.current
-      const next = curArgs.selector(
-        defaultTo(defaultState, newState[key])
+      const prev = stateRef.current
+      const next = processNext(
+        db,
+        argsRef.current.atom,
+        curArgs.selector
       )
 
       if (curArgs.isEqualFn(prev, next)) {
         return
       }
 
-      selectorValue.current = next
+      stateRef.current = next
       update()
     }
 
@@ -105,11 +157,13 @@ export function useRead<T, SelectorValue = T>(
 
     return () => {
       unsubscribe(db.stateChangeChannel, id)
-      hookLifecycle(db, atom, lifecycleUnmount)
+      toArray(argsRef.current.atom).forEach((atom) => {
+        hookLifecycle(db, atom, lifecycleUnmount)
+      })
     }
-  }, [db, key, defaultState, atom, update])
+  }, [db, update])
 
-  return selectorValue.current
+  return stateRef.current
 }
 
 export function useSend<T>(atom: Atom<T>) {

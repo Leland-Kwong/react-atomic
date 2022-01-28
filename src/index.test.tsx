@@ -66,6 +66,61 @@ describe('core', () => {
       expect(result.current).toBe('foo')
     })
 
+    test('array of atoms', () => {
+      const atomA = atom({
+        key: 'atomA',
+        defaultState: 'foo'
+      })
+      const atomB = atom({
+        key: 'atomB',
+        defaultState: 'bar'
+      })
+      const wrapper = ({
+        children
+      }: {
+        children?: any
+        selector: SelectorFn<string[], string[]>
+      }) => <RetomicRoot>{children}</RetomicRoot>
+      const { result } = renderHook(
+        ({ selector }) => ({
+          readValue: useRead([atomA, atomB], selector),
+          sendA: useSend(atomA),
+          sendB: useSend(atomB),
+          renderCount: useRenderCount()
+        }),
+        {
+          wrapper,
+          initialProps: {
+            selector: (d) => d
+          }
+        }
+      )
+      const setText = (_: string, newText: string) =>
+        newText
+
+      expect(result.current.readValue).toEqual([
+        'foo',
+        'bar'
+      ])
+
+      act(() => {
+        result.current.sendA(setText, 'foo')
+      })
+
+      expect(result.current.renderCount).toBe(1)
+
+      act(() => {
+        result.current.sendA(setText, 'foo1')
+        result.current.sendB(setText, 'bar1')
+      })
+
+      expect(result.current.readValue).toEqual([
+        'foo1',
+        'bar1'
+      ])
+      expect(result.current.renderCount).toBe(2)
+    })
+
     test('different selector with same object equality should return same reference', () => {
       const atom1 = atom<State>({
         key: 'test',
