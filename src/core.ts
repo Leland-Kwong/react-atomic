@@ -79,12 +79,10 @@ export function useRead<T, SelectorValue = T>(
     hookLifecycle(db, atom, lifecycleMount)
 
     const watcherFn: WatcherFn = ({
-      newState,
-      atom: initiatedBy
+      oldState,
+      newState
     }) => {
-      const maybeUpdate = initiatedBy.key === key
-
-      if (!maybeUpdate) {
+      if (oldState[key] === newState[key]) {
         return
       }
 
