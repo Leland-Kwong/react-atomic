@@ -42,7 +42,7 @@ describe('core', () => {
       isEqualFn?: Function
     }) => <RetomicRoot>{children}</RetomicRoot>
 
-    test('new selector each render', () => {
+    test('new selector each render should be recalculated', () => {
       const atom1 = atom<State>({
         key: 'test',
         defaultState: {
