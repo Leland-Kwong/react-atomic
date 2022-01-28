@@ -1,12 +1,14 @@
 import { Channel } from './channels'
 
+type AtomKey = string
+
 export interface DbState {
-  [key: string]: any
+  [key: AtomKey]: any
 }
 
 export interface LifecycleEventData {
   type: string
-  key: Atom<any>['key']
+  key: AtomKey
   state: Db['state']
   activeHooks: Readonly<Db['activeHooks']>
 }
@@ -54,7 +56,7 @@ export interface DevToolsLogEntry {
  * Public Types
  ***************/
 export interface Atom<T> {
-  key: string
+  key: AtomKey
   defaultState: T
   /**
    * Whether to reset the state when there are no active
