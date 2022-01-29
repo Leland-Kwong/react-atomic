@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import {
   renderHook,
   act
@@ -13,6 +13,7 @@ import {
   useWriteRoot,
   RetomicRoot
 } from '.'
+import { useRenderCount } from './utils'
 import type { SelectorFn } from './'
 
 type State = { text: string }
@@ -25,12 +26,6 @@ const setTestState = (s: State, text: string) => ({
 })
 const setTestState2 = (_: State2, newText: string) =>
   newText
-const useRenderCount = () => {
-  const count = useRef(0)
-  count.current += 1
-
-  return count.current
-}
 
 describe('core', () => {
   describe('useRead', () => {
@@ -202,6 +197,14 @@ describe('core', () => {
         text
       })
 
+      test('should skip isEqual check on first render since there is no previous value', () => {
+        const isEqualFn = jest.fn(() => true)
+        makeRenderHook({
+          isEqualFn
+        })
+        expect(isEqualFn.mock.calls.length).toBe(0)
+      })
+
       test('if is equal then should not rerender', () => {
         const { result } = makeRenderHook({
           isEqualFn: () => true
@@ -264,15 +267,14 @@ describe('core', () => {
         const sendAtom = useSend(atom1)
         const readValue2 = useRead(atom2, identity)
         const sendAtom2 = useSend(atom2)
-        const renderCount = useRef(0)
-        renderCount.current += 1
+        const renderCount = useRenderCount()
 
         return {
           readValue,
           sendAtom,
           readValue2,
           sendAtom2,
-          renderCount: renderCount.current
+          renderCount
         }
       },
       { wrapper }

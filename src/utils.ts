@@ -38,3 +38,10 @@ export function useDistinct<T>(
 
   return value
 }
+
+export const useRenderCount = () => {
+  const count = useRef(0)
+  count.current += 1
+
+  return count.current
+}

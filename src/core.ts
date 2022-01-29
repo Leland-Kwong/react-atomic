@@ -20,7 +20,8 @@ import {
   logMsg,
   useDb,
   useDistinct,
-  useUpdate
+  useUpdate,
+  useRenderCount
 } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -112,6 +113,7 @@ export function useRead<T, SelectorValue = T>(
 ): SelectorValue {
   const db = useDb()
   const update = useUpdate()
+  const isFirstRender = useRenderCount() === 1
   // these parameters could change often (ie: inline
   // functions) so its better to update a ref as to not
   // cause a remount
@@ -133,7 +135,7 @@ export function useRead<T, SelectorValue = T>(
     const prev = stateRef.current
     const next = processNext(db, atomMemo as any, selector)
 
-    if (prev === undefined || !isEqualFn(prev, next)) {
+    if (isFirstRender || !isEqualFn(prev, next)) {
       stateRef.current = next
     }
   }
