@@ -16,28 +16,6 @@ export function makeDb<T>(initialState: T): Db {
   }
 }
 
-export async function setState<T>(
-  db: Db,
-  newState: T,
-  atom: Atom<T>,
-  updateFn: Function,
-  updatePayload: any
-) {
-  const oldState = db.state
-  const eventData: WatcherEventData = {
-    oldState,
-    newState,
-    atom,
-    updateFn,
-    updatePayload,
-    db
-  }
-
-  db.state = newState
-  emit(db.stateChangeChannel, eventData)
-  emitLifecycleEvent(db, atom, lifecycleStateChange)
-}
-
 export function getState(db: Db) {
   return db.state
 }
@@ -60,4 +38,26 @@ export function emitLifecycleEvent<T>(
     state: getState(db),
     observers: { ...db.observers }
   })
+}
+
+export async function setState<T>(
+  db: Db,
+  newState: T,
+  atom: Atom<T>,
+  updateFn: Function,
+  updatePayload: any
+) {
+  const oldState = db.state
+  const eventData: WatcherEventData = {
+    oldState,
+    newState,
+    atom,
+    updateFn,
+    updatePayload,
+    db
+  }
+
+  db.state = newState
+  emit(db.stateChangeChannel, eventData)
+  emitLifecycleEvent(db, atom, lifecycleStateChange)
 }
