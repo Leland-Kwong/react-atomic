@@ -157,12 +157,10 @@ export function useRead<T, SelectorValue = T>(
         curArgs.selector
       )
 
-      if (curArgs.isEqualFn(prev, next)) {
-        return
+      if (!curArgs.isEqualFn(prev, next)) {
+        stateRef.current = next
+        update()
       }
-
-      stateRef.current = next
-      update()
     }
 
     const id = subscribe(db.stateChangeChannel, watcherFn)
