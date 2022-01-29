@@ -13,7 +13,7 @@ import {
   useWriteRoot,
   RetomicRoot
 } from '.'
-import type { AtomColl, SelectorFn } from './'
+import type { SelectorFn } from './'
 
 type State = { text: string }
 type State2 = string
@@ -383,7 +383,7 @@ describe('lifecycle', () => {
       children?: any
       done: boolean
       Lifecycle: any
-      atomsToRead: AtomColl<any>
+      atomsToRead: any
     }) => (
       <RetomicRoot>
         {/* We need to render the lifecycle hook separately so
@@ -414,7 +414,7 @@ describe('lifecycle', () => {
         initialProps: {
           done: false,
           Lifecycle,
-          atomsToRead: atom1 as AtomColl<any>
+          atomsToRead: atom1 as any
         }
       }
     )

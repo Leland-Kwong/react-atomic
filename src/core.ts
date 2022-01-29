@@ -10,7 +10,6 @@ import {
 } from './constants'
 import type {
   Atom,
-  AtomColl,
   Db,
   DbState,
   SelectorFn,
@@ -41,6 +40,9 @@ export type {
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
+/**
+ * keys must be unique for each RetomicRoot
+ */
 export function createAtom<T>({
   key,
   defaultState,
@@ -62,12 +64,12 @@ function toArray<T>(value: T) {
   return Array.isArray(value) ? value : [value]
 }
 
-const processNext = <T, SelectorValue = T>(
+function processNext<T, SelectorValue = T>(
   db: Db,
-  atoms: AtomColl<T>,
+  atoms: Atom<T> | Atom<T>[],
   selector: SelectorFn<T, SelectorValue>
-) => {
-  const getAtomState = (at: Atom<T>) => {
+) {
+  function getAtomState(at: Atom<T>) {
     const stateSlice = getState(db)[at.key]
     return defaultTo(at.defaultState, stateSlice)
   }
@@ -89,17 +91,22 @@ function didAtomStateChange<T>(
 }
 
 export function useRead<T, SelectorValue = T>(
-  atom: AtomColl<T>,
+  atom: Atom<T>,
   selector: SelectorFn<T, SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
-export function useRead<T, SelectorValue = T>(
-  atom: AtomColl<T>,
-  selector: SelectorFn<T[], SelectorValue>,
+export function useRead<T, U, SelectorValue = T>(
+  atom: [Atom<T>, Atom<U>],
+  selector: SelectorFn<[T, U], SelectorValue>,
+  isEqualFn?: IsEqualFn<SelectorValue>
+): SelectorValue
+export function useRead<T, U, V, SelectorValue = T>(
+  atom: [Atom<T>, Atom<U>, Atom<V>],
+  selector: SelectorFn<[T, U, V], SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, SelectorValue = T>(
-  atom: AtomColl<T>,
+  atom: T,
   selector: SelectorFn<T, SelectorValue>,
   isEqualFn: IsEqualFn<SelectorValue> = defaultIsEqualFn
 ): SelectorValue {
@@ -124,9 +131,9 @@ export function useRead<T, SelectorValue = T>(
 
   if (shouldRecalculate) {
     const prev = stateRef.current
-    const next = processNext(db, atomMemo, selector)
+    const next = processNext(db, atomMemo as any, selector)
 
-    if (!isEqualFn(prev, next)) {
+    if (prev === undefined || !isEqualFn(prev, next)) {
       stateRef.current = next
     }
   }
@@ -153,7 +160,7 @@ export function useRead<T, SelectorValue = T>(
       const prev = stateRef.current
       const next = processNext(
         db,
-        atomMemo,
+        atomMemo as any,
         curArgs.selector
       )
 
