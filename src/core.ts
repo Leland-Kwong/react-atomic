@@ -135,6 +135,8 @@ export function useRead<T, SelectorValue = T>(
     const prev = stateRef.current
     const next = processNext(db, atomMemo as any, selector)
 
+    // skip the isEqualFn check on first render since the
+    // value will be undefined
     if (isFirstRender || !isEqualFn(prev, next)) {
       stateRef.current = next
     }
