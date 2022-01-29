@@ -5,6 +5,7 @@ import {
 } from '@testing-library/react-hooks'
 import {
   atom,
+  useOnLifecycle,
   useRead,
   useReset,
   useSend,
@@ -12,8 +13,7 @@ import {
   useWriteRoot,
   RetomicRoot
 } from '.'
-import { useOnLifecycle } from './lifecycle'
-import type { SelectorFn } from './'
+import type { AtomColl, SelectorFn } from './'
 
 type State = { text: string }
 type State2 = string
@@ -372,40 +372,40 @@ describe('core', () => {
 })
 
 describe('lifecycle', () => {
-  const wrapper = ({
-    children,
-    done,
-    Lifecycle
-  }: {
-    children?: any
-    done: boolean
-    Lifecycle: any
-  }) => (
-    <RetomicRoot>
-      {/* We need to render the lifecycle hook separately so
-      it can capture the child hooks' unmount events otherwise
-      it will unmount before they happen. */}
-      <Lifecycle />
-      {!done && children}
-    </RetomicRoot>
-  )
   const identity = (d: any) => d
 
-  test('properly manages listeners and state on mount/unmount', () => {
+  test('properly triggers lifecycle events', () => {
+    const wrapper = ({
+      children,
+      done,
+      Lifecycle
+    }: {
+      children?: any
+      done: boolean
+      Lifecycle: any
+      atomsToRead: AtomColl<any>
+    }) => (
+      <RetomicRoot>
+        {/* We need to render the lifecycle hook separately so
+            it can capture the child hooks' unmount events, otherwise
+            it will unmount before they happen. */}
+        <Lifecycle />
+        {!done && children}
+      </RetomicRoot>
+    )
     const atom1 = atom<State2>({
-      key: 'test2',
-      defaultState: 'foo2'
+      key: 'atom1',
+      defaultState: 'foo'
     })
-    const atomToTest = atom1
     const onLifecycle = jest.fn()
     function Lifecycle() {
       useOnLifecycle(onLifecycle)
       return null
     }
     const { result, rerender } = renderHook(
-      () => {
+      ({ atomsToRead }) => {
         return {
-          readValue: useRead(atom1, identity),
+          readValue: useRead(atomsToRead, identity),
           sendAtom: useSend(atom1)
         }
       },
@@ -413,7 +413,8 @@ describe('lifecycle', () => {
         wrapper,
         initialProps: {
           done: false,
-          Lifecycle
+          Lifecycle,
+          atomsToRead: atom1 as AtomColl<any>
         }
       }
     )
@@ -421,18 +422,36 @@ describe('lifecycle', () => {
     act(() => {
       result.current.sendAtom(setTestState2, 'bar')
     })
+    // rerender with a new atom collection shape to ensure
+    // it triggers a remount due to new atoms being supplied
+    rerender({
+      done: false,
+      Lifecycle,
+      atomsToRead: [atom1]
+    })
+    // rerender with same atom collection to ensure they get
+    // properly checked for shallow equality and memoized if
+    // so
+    rerender({
+      done: false,
+      Lifecycle,
+      atomsToRead: [atom1]
+    })
+    // we're done here, so it should cause the state to
+    // reset due to `resetOnInactive` being `true`
     rerender({
       done: true,
-      Lifecycle
+      Lifecycle,
+      atomsToRead: [atom1]
     })
 
     expect(onLifecycle.mock.calls).toEqual([
       [
         {
           activeHooks: {
-            [atomToTest.key]: 1
+            [atom1.key]: 1
           },
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'mount',
           state: {}
         }
@@ -440,9 +459,9 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [atomToTest.key]: 2
+            [atom1.key]: 2
           },
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'mount',
           state: {}
         }
@@ -450,27 +469,47 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {
-            [atomToTest.key]: 2
+            [atom1.key]: 2
           },
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'stateChange',
-          state: { [atomToTest.key]: 'bar' }
+          state: { [atom1.key]: 'bar' }
         }
       ],
       [
         {
           activeHooks: {
-            [atomToTest.key]: 1
+            [atom1.key]: 1
           },
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'unmount',
-          state: { [atomToTest.key]: 'bar' }
+          state: { [atom1.key]: 'bar' }
+        }
+      ],
+      [
+        {
+          activeHooks: {
+            [atom1.key]: 2
+          },
+          key: atom1.key,
+          type: 'mount',
+          state: { [atom1.key]: 'bar' }
+        }
+      ],
+      [
+        {
+          activeHooks: {
+            [atom1.key]: 1
+          },
+          key: atom1.key,
+          type: 'unmount',
+          state: { [atom1.key]: 'bar' }
         }
       ],
       [
         {
           activeHooks: {},
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'stateChange',
           state: {}
         }
@@ -478,7 +517,7 @@ describe('lifecycle', () => {
       [
         {
           activeHooks: {},
-          key: atomToTest.key,
+          key: atom1.key,
           type: 'unmount',
           state: {}
         }
@@ -487,6 +526,23 @@ describe('lifecycle', () => {
   })
 
   test('resetOnInactive option disabled', () => {
+    const wrapper = ({
+      children,
+      done,
+      Lifecycle
+    }: {
+      children?: any
+      done: boolean
+      Lifecycle: any
+    }) => (
+      <RetomicRoot>
+        {/* We need to render the lifecycle hook separately so
+            it can capture the child hooks' unmount events otherwise
+            it will unmount before they happen. */}
+        <Lifecycle />
+        {!done && children}
+      </RetomicRoot>
+    )
     const atom1 = atom({
       key: 'atom1',
       defaultState: '',

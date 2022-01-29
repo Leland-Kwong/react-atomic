@@ -10,13 +10,19 @@ import {
 } from './constants'
 import type {
   Atom,
+  AtomColl,
   Db,
   DbState,
   SelectorFn,
   UpdateFn,
   WatcherFn
 } from './types'
-import { logMsg, useDb, useUpdate } from './utils'
+import {
+  logMsg,
+  useDb,
+  useDistinct,
+  useUpdate
+} from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
   return value === undefined ? defaultValue : value
@@ -26,7 +32,12 @@ function $$resetAtom<T>(_: T, defaultState: T) {
   return defaultState
 }
 
-export type { Atom, SelectorFn, UpdateFn } from './types'
+export type {
+  Atom,
+  AtomColl,
+  SelectorFn,
+  UpdateFn
+} from './types'
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
@@ -43,7 +54,6 @@ export function createAtom<T>({
 }
 
 type IsEqualFn<T> = (prev: T, next: T) => boolean
-type AtomColl<T> = Atom<T> | Atom<T>[]
 
 const defaultIsEqualFn = <T>(prev: T, next: T) =>
   prev === next || shallowEqual(prev, next)
@@ -68,23 +78,23 @@ const processNext = <T, SelectorValue = T>(
   return selector(next)
 }
 
-function isAtomStateEqual<T>(
+function didAtomStateChange<T>(
   this: { oldState: DbState; newState: DbState },
   atom: Atom<T>
 ) {
   const { key } = atom
   const { oldState, newState } = this
 
-  return oldState[key] === newState[key]
+  return oldState[key] !== newState[key]
 }
 
 export function useRead<T, SelectorValue = T>(
-  atom: Atom<T>,
+  atom: AtomColl<T>,
   selector: SelectorFn<T, SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, SelectorValue = T>(
-  atom: Atom<T>[],
+  atom: AtomColl<T>,
   selector: SelectorFn<T[], SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
@@ -95,7 +105,10 @@ export function useRead<T, SelectorValue = T>(
 ): SelectorValue {
   const db = useDb()
   const update = useUpdate()
-  const args = { atom, selector, isEqualFn }
+  // these parameters could change often (ie: inline
+  // functions) so its better to update a ref as to not
+  // cause a remount
+  const args = { selector, isEqualFn }
   const argsRef = useRef({} as typeof args)
   const stateRef = useRef(
     undefined as unknown as SelectorValue
@@ -103,16 +116,15 @@ export function useRead<T, SelectorValue = T>(
   const shouldRecalculate =
     argsRef.current.selector !== selector ||
     argsRef.current.isEqualFn !== isEqualFn
+  // atoms generally don't change between renders, so
+  // this is a simple way to memoize
+  const atomMemo = useDistinct(atom)
 
   argsRef.current = args
 
   if (shouldRecalculate) {
     const prev = stateRef.current
-    const next = processNext(
-      db,
-      argsRef.current.atom,
-      selector
-    )
+    const next = processNext(db, atomMemo, selector)
 
     if (!isEqualFn(prev, next)) {
       stateRef.current = next
@@ -120,7 +132,7 @@ export function useRead<T, SelectorValue = T>(
   }
 
   useEffect(() => {
-    toArray(argsRef.current.atom).forEach((atom) => {
+    toArray(atomMemo).forEach((atom) => {
       hookLifecycle(db, atom, lifecycleMount)
     })
 
@@ -128,12 +140,12 @@ export function useRead<T, SelectorValue = T>(
       oldState,
       newState
     }) => {
-      if (
-        toArray(argsRef.current.atom).every(
-          isAtomStateEqual,
-          { oldState, newState }
-        )
-      ) {
+      const maybeUpdate = toArray(atomMemo).some(
+        didAtomStateChange,
+        { oldState, newState }
+      )
+
+      if (!maybeUpdate) {
         return
       }
 
@@ -141,7 +153,7 @@ export function useRead<T, SelectorValue = T>(
       const prev = stateRef.current
       const next = processNext(
         db,
-        argsRef.current.atom,
+        atomMemo,
         curArgs.selector
       )
 
@@ -157,11 +169,11 @@ export function useRead<T, SelectorValue = T>(
 
     return () => {
       unsubscribe(db.stateChangeChannel, id)
-      toArray(argsRef.current.atom).forEach((atom) => {
+      toArray(atomMemo).forEach((atom) => {
         hookLifecycle(db, atom, lifecycleUnmount)
       })
     }
-  }, [db, update])
+  }, [db, atomMemo, update])
 
   return stateRef.current
 }

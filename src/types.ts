@@ -64,6 +64,7 @@ export interface Atom<T> {
    */
   resetOnInactive?: boolean
 }
+export type AtomColl<T> = Atom<T> | Atom<T>[]
 
 export type SelectorFn<State, SelectorValue> = (
   state: State
