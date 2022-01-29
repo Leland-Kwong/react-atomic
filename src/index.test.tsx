@@ -37,6 +37,18 @@ describe('core', () => {
       isEqualFn?: Function
     }) => <RetomicRoot>{children}</RetomicRoot>
 
+    test('if no selector provided defaults to identity function', () => {
+      const atom1 = atom({
+        key: 'test',
+        defaultState: 0
+      })
+      const { result } = renderHook(() => useRead(atom1), {
+        wrapper
+      })
+
+      expect(result.current).toBe(0)
+    })
+
     test('new selector each render should be recalculated', () => {
       const atom1 = atom<State>({
         key: 'test',
@@ -374,8 +386,6 @@ describe('core', () => {
 })
 
 describe('lifecycle', () => {
-  const identity = (d: any) => d
-
   test('properly triggers lifecycle events', () => {
     const wrapper = ({
       children,

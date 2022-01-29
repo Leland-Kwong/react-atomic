@@ -17,6 +17,7 @@ import type {
   WatcherFn
 } from './types'
 import {
+  identity,
   logMsg,
   useDb,
   useDistinct,
@@ -93,22 +94,22 @@ function didAtomStateChange<T>(
 
 export function useRead<T, SelectorValue = T>(
   atom: Atom<T>,
-  selector: SelectorFn<T, SelectorValue>,
+  selector?: SelectorFn<T, SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, U, SelectorValue = T>(
   atom: [Atom<T>, Atom<U>],
-  selector: SelectorFn<[T, U], SelectorValue>,
+  selector?: SelectorFn<[T, U], SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, U, V, SelectorValue = T>(
   atom: [Atom<T>, Atom<U>, Atom<V>],
-  selector: SelectorFn<[T, U, V], SelectorValue>,
+  selector?: SelectorFn<[T, U, V], SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, SelectorValue = T>(
   atom: T,
-  selector: SelectorFn<T, SelectorValue>,
+  selector: SelectorFn<T, SelectorValue> = identity,
   isEqualFn: IsEqualFn<SelectorValue> = defaultIsEqualFn
 ): SelectorValue {
   const db = useDb()

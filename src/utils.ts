@@ -45,3 +45,5 @@ export const useRenderCount = () => {
 
   return count.current
 }
+
+export const identity = (d: any) => d
