@@ -11,7 +11,7 @@ export function makeDb<T>(initialState: T): Db {
     state: initialState,
     stateChangeChannel: channel(),
     lifecycleChannel: channel(),
-    activeHooks: {},
+    observers: {},
     id: (Math.random() * 1000).toString(32)
   }
 }
@@ -58,6 +58,6 @@ export function emitLifecycleEvent<T>(
     type,
     key: atom.key,
     state: getState(db),
-    activeHooks: { ...db.activeHooks }
+    observers: { ...db.observers }
   })
 }

@@ -448,7 +448,7 @@ describe('lifecycle', () => {
     expect(onLifecycle.mock.calls).toEqual([
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 1
           },
           key: atom1.key,
@@ -458,7 +458,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 2
           },
           key: atom1.key,
@@ -468,7 +468,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 2
           },
           key: atom1.key,
@@ -478,7 +478,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 1
           },
           key: atom1.key,
@@ -488,7 +488,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 2
           },
           key: atom1.key,
@@ -498,7 +498,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 1
           },
           key: atom1.key,
@@ -508,7 +508,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {},
+          observers: {},
           key: atom1.key,
           type: 'stateChange',
           state: {}
@@ -516,7 +516,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {},
+          observers: {},
           key: atom1.key,
           type: 'unmount',
           state: {}
@@ -580,7 +580,7 @@ describe('lifecycle', () => {
     expect(onLifecycle.mock.calls).toEqual([
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 1
           },
           key: atom1.key,
@@ -590,7 +590,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {
+          observers: {
             [atom1.key]: 1
           },
           key: atom1.key,
@@ -602,7 +602,7 @@ describe('lifecycle', () => {
       ],
       [
         {
-          activeHooks: {},
+          observers: {},
           key: atom1.key,
           type: 'unmount',
           state: {

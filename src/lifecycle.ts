@@ -45,8 +45,22 @@ function cleanupAtom<T>(db: Db, atom: Atom<T>) {
   )
 }
 
-function isAtomActive<T>(db: Db, atom: Atom<T>) {
-  return db.activeHooks[atom.key] > 0
+function countObservers(
+  db: Db,
+  atom: Atom<any>,
+  changeCount: number
+) {
+  const newCount =
+    (db.observers[atom.key] || 0) + changeCount
+  const isAtomActive = newCount > 0
+
+  if (isAtomActive) {
+    db.observers[atom.key] = newCount
+  } else {
+    delete db.observers[atom.key]
+  }
+
+  return newCount
 }
 
 /**
@@ -70,18 +84,12 @@ export function hookLifecycle(
     )
   }
 
-  if (lifecycleType === lifecycleMount) {
-    db.activeHooks[atom.key] =
-      (db.activeHooks[atom.key] || 0) + 1
-  }
+  const changeCount =
+    lifecycleType === lifecycleMount ? 1 : -1
+  const isDone = countObservers(db, atom, changeCount) === 0
 
-  if (lifecycleType === lifecycleUnmount) {
-    db.activeHooks[atom.key] -= 1
-
-    if (!isAtomActive(db, atom)) {
-      delete db.activeHooks[atom.key]
-      cleanupAtom(db, atom)
-    }
+  if (isDone) {
+    cleanupAtom(db, atom)
   }
 
   emitLifecycleEvent(db, atom, lifecycleType)
@@ -94,7 +102,7 @@ export function hookLifecycle(
 export function useOnLifecycle(
   fn: (data: {
     type: string
-    activeHooks: Db['activeHooks']
+    observers: Db['observers']
     state: Db['state']
   }) => void,
   predicate: (

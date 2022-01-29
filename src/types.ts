@@ -10,7 +10,7 @@ export interface LifecycleEventData {
   type: string
   key: AtomKey
   state: Db['state']
-  activeHooks: Readonly<Db['activeHooks']>
+  observers: Readonly<Db['observers']>
 }
 
 export interface Db {
@@ -18,7 +18,7 @@ export interface Db {
   stateChangeChannel: Channel<WatcherEventData>
   lifecycleChannel: Channel<LifecycleEventData>
   // hook counts
-  activeHooks: {
+  observers: {
     [atomKey: string]: number
   }
   id: string
