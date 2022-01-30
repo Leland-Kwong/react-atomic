@@ -21,8 +21,8 @@ import {
   logMsg,
   useDb,
   useDistinct,
-  useUpdate,
-  useRenderCount
+  useRenderCount,
+  useUpdate
 } from './utils'
 
 function defaultTo<T>(defaultValue: T, value: T) {
@@ -33,12 +33,7 @@ function $$resetAtom<T>(_: T, defaultState: T) {
   return defaultState
 }
 
-export type {
-  Atom,
-  AtomColl,
-  SelectorFn,
-  UpdateFn
-} from './types'
+export type { Atom, SelectorFn, UpdateFn } from './types'
 export { RetomicRoot } from './RetomicRoot'
 export { useOnLifecycle } from './lifecycle'
 
@@ -49,11 +44,12 @@ export function createAtom<T>({
   key,
   defaultState,
   resetOnInactive = true
-}: Atom<T>): Atom<T> {
+}: Omit<Atom<T>, 'type'>): Atom<T> {
   return {
     key,
     defaultState,
-    resetOnInactive
+    resetOnInactive,
+    type: '@@atom'
   }
 }
 
@@ -66,14 +62,27 @@ function toArray<T>(value: T) {
   return Array.isArray(value) ? value : [value]
 }
 
+function isAtom<T>(value: T) {
+  return (
+    value &&
+    typeof value === 'object' &&
+    (value as any).type === '@@atom'
+  )
+}
+
 function processNext<T, SelectorValue = T>(
   db: Db,
-  atoms: Atom<T> | Atom<T>[],
+  atoms: Arg<T> | Arg<T>[],
   selector: SelectorFn<T, SelectorValue>
 ) {
-  function getAtomState(at: Atom<T>) {
-    const stateSlice = getState(db)[at.key]
-    return defaultTo(at.defaultState, stateSlice)
+  function getAtomState(value: Arg<T>) {
+    if (!isAtom(value)) {
+      return value
+    }
+
+    const atom = value as Atom<T>
+    const stateSlice = getState(db)[atom.key]
+    return defaultTo(atom.defaultState, stateSlice)
   }
   const next = Array.isArray(atoms)
     ? atoms.map(getAtomState)
@@ -83,27 +92,37 @@ function processNext<T, SelectorValue = T>(
 }
 
 function didAtomStateChange<T>(
-  this: { oldState: DbState; newState: DbState },
-  atom: Atom<T>
+  this: {
+    oldState: DbState
+    newState: DbState
+  },
+  readArg: Arg<T>
 ) {
-  const { key } = atom
   const { oldState, newState } = this
+
+  if (!isAtom(readArg)) {
+    return false
+  }
+
+  const { key } = readArg as Atom<T>
 
   return oldState[key] !== newState[key]
 }
 
+type Arg<T> = Atom<T> | T
+
 export function useRead<T, SelectorValue = T>(
-  atom: Atom<T>,
+  atom: Arg<T>,
   selector?: SelectorFn<T, SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, U, SelectorValue = T>(
-  atom: [Atom<T>, Atom<U>],
+  atom: [Arg<T>, Arg<U>],
   selector?: SelectorFn<[T, U], SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
 export function useRead<T, U, V, SelectorValue = T>(
-  atom: [Atom<T>, Atom<U>, Atom<V>],
+  atom: [Arg<T>, Arg<U>, Arg<V>],
   selector?: SelectorFn<[T, U, V], SelectorValue>,
   isEqualFn?: IsEqualFn<SelectorValue>
 ): SelectorValue
@@ -126,8 +145,6 @@ export function useRead<T, SelectorValue = T>(
   const shouldRecalculate =
     argsRef.current.selector !== selector ||
     argsRef.current.isEqualFn !== isEqualFn
-  // atoms generally don't change between renders, so
-  // this is a simple way to memoize
   const atomMemo = useDistinct(atom)
 
   argsRef.current = args
@@ -136,8 +153,6 @@ export function useRead<T, SelectorValue = T>(
     const prev = stateRef.current
     const next = processNext(db, atomMemo as any, selector)
 
-    // skip the isEqualFn check on first render since the
-    // value will be undefined
     if (isFirstRender || !isEqualFn(prev, next)) {
       stateRef.current = next
     }

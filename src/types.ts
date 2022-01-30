@@ -63,11 +63,11 @@ export interface Atom<T> {
    * hooks.
    */
   resetOnInactive?: boolean
+  type: '@@atom'
 }
-export type AtomColl<T> = Atom<T> | Atom<T>[]
 
-export type SelectorFn<State, SelectorValue> = (
-  state: State
+export type SelectorFn<Arg, SelectorValue> = (
+  arg: Arg
 ) => SelectorValue
 
 export type UpdateFn<State, Payload> = (
